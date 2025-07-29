@@ -1,12 +1,12 @@
 import os
 import yaml
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Union, Any
+from typing import Dict, List, Optional, Union, Any, Literal
 
 
 @dataclass
 class EncoderConfig:
-    """Configuration for the encoder."""
+    """Enhanced configuration for the encoder."""
     
     type: str = "GIN"  # GIN or GraphSAGE
     in_dim: int = 0  # Will be set based on dataset
@@ -14,40 +14,82 @@ class EncoderConfig:
     num_layers: int = 3
     dropout: float = 0.5
     aggr: str = "mean"  # For GraphSAGE
+    
+    # Multi-head encoder parameters
+    multi_head_type: str = "efficient"  # "full" or "efficient"
+    shared_layers: int = 1
+    distribution_size: int = 32  # Number of vectors per node (moved from pooling)
 
 
 @dataclass
 class PoolingConfig:
-    """Configuration for the barycentric pooling."""
+    """Enhanced configuration for the barycentric pooling."""
     
     codebook_size: int = 16
-    distribution_size: int = 32
-    epsilon: float = 0.1
-    num_iterations: int = 20
+    
+    # POT parameters
+    epsilon: float = 0.2
+    max_iter: int = 100  # Maximum Sinkhorn iterations for POT
+    tol: float = 1e-6    # Convergence tolerance for POT
+    p: int = 2  # Order of Wasserstein distance
 
 
 @dataclass
 class ClassificationConfig:
-    """Configuration for the classification head."""
+    """Enhanced configuration for the classification head."""
     
+    type: str = "enhanced"  # "simple", "enhanced", "adaptive", "deep_residual"
+    
+    # Common parameters
+    dropout: float = 0.2
+    activation: str = "relu"  # "relu", "leaky_relu", "gelu", "swish"
+    norm_type: Optional[str] = "batch"  # "batch", "layer", None
+    
+    # Enhanced/Adaptive MLP parameters
+    hidden_dims: Union[List[int], int] = field(default_factory=lambda: [256, 128, 64])
+    use_residual: bool = True
+    residual_type: str = "add"  # "add", "concat"
+    final_dropout: float = 0.5
+    
+    # Adaptive MLP parameters
+    depth_factor: float = 1.0
+    width_factor: float = 1.0
+    
+    # Deep Residual MLP parameters
+    hidden_dim: int = 256
+    num_blocks: int = 3
+    
+    # Simple MLP parameters (for backward compatibility)
     num_layers: int = 2
-    dropout: float = 0.5
+
+
+@dataclass
+class RegularizationConfig:
+    """Configuration for distribution regularization."""
+    
+    enabled: bool = True
+    type: str = "variance"  # "variance", "centroid", "coherence"
+    lambda_reg: float = 0.01
 
 
 @dataclass
 class ModelConfig:
-    """Configuration for the BaryGNN model."""
+    """Enhanced configuration for the BaryGNN model."""
     
+    version: str = "v2"  # Keep for backward compatibility
     hidden_dim: int = 64
     readout_type: str = "weighted_mean"  # "weighted_mean" or "concat"
+    debug_mode: bool = False
+    
     encoder: EncoderConfig = field(default_factory=EncoderConfig)
     pooling: PoolingConfig = field(default_factory=PoolingConfig)
     classification: ClassificationConfig = field(default_factory=ClassificationConfig)
+    regularization: RegularizationConfig = field(default_factory=RegularizationConfig)
 
 
 @dataclass
 class DataConfig:
-    """Configuration for the dataset."""
+    """Enhanced configuration for the dataset."""
     
     name: str = "MUTAG"  # Dataset name
     batch_size: int = 32
@@ -55,11 +97,15 @@ class DataConfig:
     split_seed: int = 42
     val_ratio: float = 0.1
     test_ratio: float = 0.1
+    
+    # Data preprocessing
+    normalize_features: bool = True
+    add_self_loops: bool = True
 
 
 @dataclass
 class TrainingConfig:
-    """Configuration for training."""
+    """Enhanced configuration for training."""
     
     num_epochs: int = 300
     lr: float = 0.001
@@ -67,24 +113,45 @@ class TrainingConfig:
     patience: int = 20  # Early stopping patience
     metric: str = "accuracy"  # Metric to track for early stopping
     device: str = "cuda"  # "cuda" or "cpu"
+    
+    # Advanced training parameters
+    scheduler: Optional[str] = None  # "cosine", "step", "plateau"
+    scheduler_params: Dict[str, Any] = field(default_factory=dict)
+    gradient_clip: Optional[float] = 1.0
+    warmup_epochs: int = 0
+    
+    # Loss weighting
+    class_weights: Optional[List[float]] = None
+    focal_loss: bool = False
+    focal_alpha: float = 1.0
+    focal_gamma: float = 2.0
 
 
 @dataclass
 class WandbConfig:
-    """Configuration for Weights & Biases."""
+    """Enhanced configuration for Weights & Biases."""
     
     enabled: bool = True
     project: str = "BaryGNN"
     entity: Optional[str] = None
     api_key: Optional[str] = None  # Set this via environment variable
+    
+    # Advanced W&B features
+    tags: List[str] = field(default_factory=list)
+    notes: Optional[str] = None
+    save_code: bool = True
+    log_gradients: bool = False
+    log_parameters: bool = True
+    watch_model: bool = True
 
 
 @dataclass
 class Config:
-    """Main configuration."""
+    """Enhanced main configuration for BaryGNN."""
     
-    experiment_name: str = "default"
+    experiment_name: str = "barygnn-default"
     seed: int = 42
+    
     model: ModelConfig = field(default_factory=ModelConfig)
     data: DataConfig = field(default_factory=DataConfig)
     training: TrainingConfig = field(default_factory=TrainingConfig)
@@ -97,13 +164,44 @@ class Config:
             config_dict = yaml.safe_load(f)
 
         # Recursively convert nested dicts to dataclasses
+        def convert_encoder(encoder_dict):
+            # Handle distribution_size if it exists in the encoder config
+            if "distribution_size" in encoder_dict:
+                return EncoderConfig(**encoder_dict)
+            # Otherwise, use the default value
+            return EncoderConfig(**encoder_dict)
+
+        def convert_pooling(pooling_dict):
+            # Remove distribution_size if it exists in the pooling config (for backward compatibility)
+            if "distribution_size" in pooling_dict:
+                pooling_dict = pooling_dict.copy()
+                pooling_dict.pop("distribution_size")
+            return PoolingConfig(**pooling_dict)
+
+        def convert_classification(classification_dict):
+            return ClassificationConfig(**classification_dict)
+        
+        def convert_regularization(reg_dict):
+            return RegularizationConfig(**reg_dict)
+
         def convert_model(model_dict):
+            # Handle the case where distribution_size is in pooling but not in encoder
+            encoder_dict = model_dict.get("encoder", {}).copy()
+            pooling_dict = model_dict.get("pooling", {})
+            
+            # If distribution_size is in pooling but not in encoder, move it
+            if "distribution_size" in pooling_dict and "distribution_size" not in encoder_dict:
+                encoder_dict["distribution_size"] = pooling_dict["distribution_size"]
+            
             return ModelConfig(
+                version=model_dict.get("version", "v2"),
                 hidden_dim=model_dict.get("hidden_dim", 64),
                 readout_type=model_dict.get("readout_type", "weighted_mean"),
-                encoder=EncoderConfig(**model_dict.get("encoder", {})),
-                pooling=PoolingConfig(**model_dict.get("pooling", {})),
-                classification=ClassificationConfig(**model_dict.get("classification", {})),
+                debug_mode=model_dict.get("debug_mode", False),
+                encoder=convert_encoder(encoder_dict),
+                pooling=convert_pooling(pooling_dict),
+                classification=convert_classification(model_dict.get("classification", {})),
+                regularization=convert_regularization(model_dict.get("regularization", {})),
             )
 
         def convert_data(data_dict):
@@ -117,13 +215,32 @@ class Config:
                 patience=int(training_dict.get("patience", 20)),
                 metric=training_dict.get("metric", "accuracy"),
                 device=training_dict.get("device", "cuda"),
+                scheduler=training_dict.get("scheduler"),
+                scheduler_params=training_dict.get("scheduler_params", {}),
+                gradient_clip=training_dict.get("gradient_clip"),
+                warmup_epochs=int(training_dict.get("warmup_epochs", 0)),
+                class_weights=training_dict.get("class_weights"),
+                focal_loss=training_dict.get("focal_loss", False),
+                focal_alpha=float(training_dict.get("focal_alpha", 1.0)),
+                focal_gamma=float(training_dict.get("focal_gamma", 2.0)),
             )
 
         def convert_wandb(wandb_dict):
-            return WandbConfig(**wandb_dict)
+            return WandbConfig(
+                enabled=wandb_dict.get("enabled", True),
+                project=wandb_dict.get("project", "BaryGNN"),
+                entity=wandb_dict.get("entity"),
+                api_key=wandb_dict.get("api_key"),
+                tags=wandb_dict.get("tags", []),
+                notes=wandb_dict.get("notes"),
+                save_code=wandb_dict.get("save_code", True),
+                log_gradients=wandb_dict.get("log_gradients", False),
+                log_parameters=wandb_dict.get("log_parameters", True),
+                watch_model=wandb_dict.get("watch_model", True),
+            )
 
         return cls(
-            experiment_name=config_dict.get("experiment_name", "default"),
+            experiment_name=config_dict.get("experiment_name", "barygnn-default"),
             seed=config_dict.get("seed", 42),
             model=convert_model(config_dict.get("model", {})),
             data=convert_data(config_dict.get("data", {})),
@@ -136,7 +253,7 @@ class Config:
         os.makedirs(os.path.dirname(path), exist_ok=True)
         
         with open(path, "w") as f:
-            yaml.dump(self.__dict__, f, default_flow_style=False)
+            yaml.dump(self.to_dict(), f, default_flow_style=False)
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert configuration to a dictionary."""
@@ -144,8 +261,10 @@ class Config:
             "experiment_name": self.experiment_name,
             "seed": self.seed,
             "model": {
+                "version": self.model.version,
                 "hidden_dim": self.model.hidden_dim,
                 "readout_type": self.model.readout_type,
+                "debug_mode": self.model.debug_mode,
                 "encoder": {
                     "type": self.model.encoder.type,
                     "in_dim": self.model.encoder.in_dim,
@@ -153,16 +272,36 @@ class Config:
                     "num_layers": self.model.encoder.num_layers,
                     "dropout": self.model.encoder.dropout,
                     "aggr": self.model.encoder.aggr,
+                    "multi_head_type": self.model.encoder.multi_head_type,
+                    "shared_layers": self.model.encoder.shared_layers,
+                    "distribution_size": self.model.encoder.distribution_size,
                 },
                 "pooling": {
                     "codebook_size": self.model.pooling.codebook_size,
-                    "distribution_size": self.model.pooling.distribution_size,
                     "epsilon": self.model.pooling.epsilon,
-                    "num_iterations": self.model.pooling.num_iterations,
+                    "max_iter": self.model.pooling.max_iter,
+                    "tol": self.model.pooling.tol,
+                    "p": self.model.pooling.p,
                 },
                 "classification": {
-                    "num_layers": self.model.classification.num_layers,
+                    "type": self.model.classification.type,
                     "dropout": self.model.classification.dropout,
+                    "activation": self.model.classification.activation,
+                    "norm_type": self.model.classification.norm_type,
+                    "hidden_dims": self.model.classification.hidden_dims,
+                    "use_residual": self.model.classification.use_residual,
+                    "residual_type": self.model.classification.residual_type,
+                    "final_dropout": self.model.classification.final_dropout,
+                    "depth_factor": self.model.classification.depth_factor,
+                    "width_factor": self.model.classification.width_factor,
+                    "hidden_dim": self.model.classification.hidden_dim,
+                    "num_blocks": self.model.classification.num_blocks,
+                    "num_layers": self.model.classification.num_layers,
+                },
+                "regularization": {
+                    "enabled": self.model.regularization.enabled,
+                    "type": self.model.regularization.type,
+                    "lambda_reg": self.model.regularization.lambda_reg,
                 },
             },
             "data": {
@@ -172,6 +311,8 @@ class Config:
                 "split_seed": self.data.split_seed,
                 "val_ratio": self.data.val_ratio,
                 "test_ratio": self.data.test_ratio,
+                "normalize_features": self.data.normalize_features,
+                "add_self_loops": self.data.add_self_loops,
             },
             "training": {
                 "num_epochs": self.training.num_epochs,
@@ -180,11 +321,70 @@ class Config:
                 "patience": self.training.patience,
                 "metric": self.training.metric,
                 "device": self.training.device,
+                "scheduler": self.training.scheduler,
+                "scheduler_params": self.training.scheduler_params,
+                "gradient_clip": self.training.gradient_clip,
+                "warmup_epochs": self.training.warmup_epochs,
+                "class_weights": self.training.class_weights,
+                "focal_loss": self.training.focal_loss,
+                "focal_alpha": self.training.focal_alpha,
+                "focal_gamma": self.training.focal_gamma,
             },
             "wandb": {
                 "enabled": self.wandb.enabled,
                 "project": self.wandb.project,
                 "entity": self.wandb.entity,
                 "api_key": self.wandb.api_key,
+                "tags": self.wandb.tags,
+                "notes": self.wandb.notes,
+                "save_code": self.wandb.save_code,
+                "log_gradients": self.wandb.log_gradients,
+                "log_parameters": self.wandb.log_parameters,
+                "watch_model": self.wandb.watch_model,
             },
+        }
+    
+    def get_model_kwargs(self) -> Dict[str, Any]:
+        """
+        Get model initialization kwargs from configuration.
+        
+        Returns:
+            kwargs: Dictionary of model parameters
+        """
+        return {
+            # Data parameters
+            'in_dim': self.model.encoder.in_dim,
+            'num_classes': 2,  # Will be set based on dataset
+            
+            # Architecture parameters
+            'hidden_dim': self.model.hidden_dim,
+            'codebook_size': self.model.pooling.codebook_size,
+            'distribution_size': self.model.encoder.distribution_size,
+            'readout_type': self.model.readout_type,
+            
+            # Encoder parameters
+            'encoder_type': self.model.encoder.type,
+            'encoder_layers': self.model.encoder.num_layers,
+            'encoder_dropout': self.model.encoder.dropout,
+            'multi_head_type': self.model.encoder.multi_head_type,
+            'shared_layers': self.model.encoder.shared_layers,
+            
+            # Pooling parameters
+            'sinkhorn_epsilon': self.model.pooling.epsilon,
+            'max_iter': self.model.pooling.max_iter,
+            'tol': self.model.pooling.tol,
+            
+            # Classification parameters
+            'classifier_type': self.model.classification.type,
+            'classifier_hidden_dims': self.model.classification.hidden_dims,
+            'classifier_dropout': self.model.classification.dropout,
+            'classifier_activation': self.model.classification.activation,
+            
+            # Regularization parameters
+            'use_distribution_reg': self.model.regularization.enabled,
+            'reg_type': self.model.regularization.type,
+            'reg_lambda': self.model.regularization.lambda_reg,
+            
+            # General parameters
+            'debug_mode': self.model.debug_mode,
         } 

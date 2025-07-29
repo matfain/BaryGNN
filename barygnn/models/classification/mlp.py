@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+# TODO: use some fancier architecture with more layers and neurons
 
 class MLP(nn.Module):
     """
@@ -14,7 +15,7 @@ class MLP(nn.Module):
         hidden_dim: int,
         out_dim: int,
         num_layers: int = 2,
-        dropout: float = 0.5,
+        dropout: float = 0.2,
     ):
         """
         Initialize the MLP.

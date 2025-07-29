@@ -1,45 +1,84 @@
-experiment_name: "barygnn_default"
+experiment_name: "barygnn-v2-default"
 seed: 42
 
 model:
+  version: "v2"
   hidden_dim: 64
   readout_type: "weighted_mean"  # "weighted_mean" or "concat"
+  debug_mode: false
   
   encoder:
     type: "GIN"  # "GIN" or "GraphSAGE"
+    in_dim: 0  # Will be set based on dataset
     hidden_dim: 64
     num_layers: 3
     dropout: 0.5
     aggr: "mean"  # For GraphSAGE
+    multi_head_type: "efficient"  # "full" or "efficient"
+    shared_layers: 1
+    distribution_size: 32  # Number of vectors per node
   
   pooling:
-    codebook_size: 16
-    distribution_size: 32
-    epsilon: 0.1
-    num_iterations: 20
+    codebook_size: 32
+    epsilon: 0.2
+    max_iter: 100
+    tol: 1e-6
+    p: 2
   
   classification:
-    num_layers: 2
-    dropout: 0.5
+    type: "enhanced"  # "simple", "enhanced", "adaptive", "deep_residual"
+    dropout: 0.2
+    activation: "relu"  # "relu", "leaky_relu", "gelu", "swish"
+    norm_type: "batch"  # "batch", "layer", null
+    hidden_dims: [256, 128, 64]
+    use_residual: true
+    residual_type: "add"  # "add", "concat"
+    final_dropout: 0.5
+    depth_factor: 1.0  # For adaptive
+    width_factor: 1.0  # For adaptive
+    hidden_dim: 256  # For deep_residual and simple
+    num_blocks: 3  # For deep_residual
+    num_layers: 2  # For simple
+  
+  regularization:
+    enabled: true
+    type: "variance"  # "variance", "centroid", "coherence"
+    lambda_reg: 0.01
 
 data:
-  name: "MUTAG"  # Dataset name
+  name: "MUTAG"
   batch_size: 32
   num_workers: 4
   split_seed: 42
   val_ratio: 0.1
   test_ratio: 0.1
+  normalize_features: true
+  add_self_loops: true
 
 training:
   num_epochs: 300
   lr: 0.001
-  weight_decay: 5e-4
-  patience: 20  # Early stopping patience
-  metric: "accuracy"  # Metric to track for early stopping
-  device: "cuda"  # "cuda" or "cpu"
+  weight_decay: 0.0005
+  patience: 20
+  metric: "accuracy"
+  device: "cuda"
+  scheduler: null  # "cosine", "step", "plateau"
+  scheduler_params: {}
+  gradient_clip: 1.0
+  warmup_epochs: 0
+  class_weights: null
+  focal_loss: false
+  focal_alpha: 1.0
+  focal_gamma: 2.0
 
 wandb:
   enabled: true
   project: "BaryGNN"
-  entity: null  # Your W&B username or team name
-  api_key: null  # Set via environment variable WANDB_API_KEY 
+  entity: null
+  api_key: null  # Set via environment variable
+  tags: []
+  notes: null
+  save_code: true
+  log_gradients: false
+  log_parameters: true
+  watch_model: true 

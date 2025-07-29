@@ -1,3 +1,9 @@
-from barygnn.models.pooling.barycentric_pooling import BarycentricPooling
+from barygnn.models.pooling.pot_pooling import (
+    POTBarycentricPooling,
+    create_barycentric_pooling
+)
 
-__all__ = ["BarycentricPooling"]
+__all__ = [
+    "POTBarycentricPooling",
+    "create_barycentric_pooling"
+]
