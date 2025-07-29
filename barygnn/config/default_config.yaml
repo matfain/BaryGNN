@@ -1,0 +1,45 @@
+experiment_name: "barygnn_default"
+seed: 42
+
+model:
+  hidden_dim: 64
+  readout_type: "weighted_mean"  # "weighted_mean" or "concat"
+  
+  encoder:
+    type: "GIN"  # "GIN" or "GraphSAGE"
+    hidden_dim: 64
+    num_layers: 3
+    dropout: 0.5
+    aggr: "mean"  # For GraphSAGE
+  
+  pooling:
+    codebook_size: 16
+    distribution_size: 32
+    epsilon: 0.1
+    num_iterations: 20
+  
+  classification:
+    num_layers: 2
+    dropout: 0.5
+
+data:
+  name: "MUTAG"  # Dataset name
+  batch_size: 32
+  num_workers: 4
+  split_seed: 42
+  val_ratio: 0.1
+  test_ratio: 0.1
+
+training:
+  num_epochs: 300
+  lr: 0.001
+  weight_decay: 5e-4
+  patience: 20  # Early stopping patience
+  metric: "accuracy"  # Metric to track for early stopping
+  device: "cuda"  # "cuda" or "cpu"
+
+wandb:
+  enabled: true
+  project: "BaryGNN"
+  entity: null  # Your W&B username or team name
+  api_key: null  # Set via environment variable WANDB_API_KEY 
