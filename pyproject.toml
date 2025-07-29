@@ -1,0 +1,21 @@
+[project]
+name = "barygnn"
+description = "BaryGNN: Barycenter pooling methods for Graph Neural Networks"
+version = "0.1.0"
+authors = [
+    { name = "Matan Fainzilber", email = "fainzilber@mail.tau.ac.il" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "torch",
+    "torch-geometric",
+    "numpy",
+    "scipy",
+    "pandas",
+    "matplotlib",
+    "wandb"
+]
+
+[build-system]
+requires = ["uv"]
+build-backend = "uv.build" 
