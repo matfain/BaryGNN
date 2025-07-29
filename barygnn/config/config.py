@@ -95,8 +95,41 @@ class Config:
         """Load configuration from a YAML file."""
         with open(path, "r") as f:
             config_dict = yaml.safe_load(f)
-        
-        return cls(**config_dict)
+
+        # Recursively convert nested dicts to dataclasses
+        def convert_model(model_dict):
+            return ModelConfig(
+                hidden_dim=model_dict.get("hidden_dim", 64),
+                readout_type=model_dict.get("readout_type", "weighted_mean"),
+                encoder=EncoderConfig(**model_dict.get("encoder", {})),
+                pooling=PoolingConfig(**model_dict.get("pooling", {})),
+                classification=ClassificationConfig(**model_dict.get("classification", {})),
+            )
+
+        def convert_data(data_dict):
+            return DataConfig(**data_dict)
+
+        def convert_training(training_dict):
+            return TrainingConfig(
+                num_epochs=int(training_dict.get("num_epochs", 300)),
+                lr=float(training_dict.get("lr", 0.001)),
+                weight_decay=float(training_dict.get("weight_decay", 5e-4)),
+                patience=int(training_dict.get("patience", 20)),
+                metric=training_dict.get("metric", "accuracy"),
+                device=training_dict.get("device", "cuda"),
+            )
+
+        def convert_wandb(wandb_dict):
+            return WandbConfig(**wandb_dict)
+
+        return cls(
+            experiment_name=config_dict.get("experiment_name", "default"),
+            seed=config_dict.get("seed", 42),
+            model=convert_model(config_dict.get("model", {})),
+            data=convert_data(config_dict.get("data", {})),
+            training=convert_training(config_dict.get("training", {})),
+            wandb=convert_wandb(config_dict.get("wandb", {})),
+        )
     
     def to_yaml(self, path: str) -> None:
         """Save configuration to a YAML file."""

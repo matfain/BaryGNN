@@ -21,5 +21,10 @@ venv/
 .DS_Store
 Thumbs.db 
 
-# Ignoe anaconda directory
+# Ignoe directories
 anaconda3/
+wandb/
+logs/
+examples/
+data/
+checkpoints/

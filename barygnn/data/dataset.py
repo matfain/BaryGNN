@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from torch_geometric.datasets import TUDataset, OGBG
+from torch_geometric.datasets import TUDataset, OGB_MAG
 from torch_geometric.loader import DataLoader
 from torch_geometric.transforms import NormalizeFeatures
 from sklearn.model_selection import train_test_split
@@ -40,7 +40,7 @@ def load_dataset(
     # Load dataset
     if name.startswith("ogbg"):
         # OGB dataset
-        dataset = OGBG(name=name, root="data")
+        dataset = OGB_MAG(name=name, root="data")
         split_idx = dataset.get_idx_split()
         train_idx, val_idx, test_idx = split_idx["train"], split_idx["valid"], split_idx["test"]
         

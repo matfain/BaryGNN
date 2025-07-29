@@ -13,7 +13,8 @@ dependencies = [
     "scipy",
     "pandas",
     "matplotlib",
-    "wandb"
+    "wandb",
+    "scikit-learn"
 ]
 
 [build-system]

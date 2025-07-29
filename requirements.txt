@@ -46,6 +46,8 @@ jinja2==3.1.6
     # via
     #   torch
     #   torch-geometric
+joblib==1.5.1
+    # via scikit-learn
 kiwisolver==1.4.8
     # via matplotlib
 markupsafe==3.0.2
@@ -66,6 +68,7 @@ numpy==2.3.2
     #   contourpy
     #   matplotlib
     #   pandas
+    #   scikit-learn
     #   scipy
     #   torch-geometric
 nvidia-cublas-cu12==12.6.4.1
@@ -143,8 +146,12 @@ requests==2.32.4
     # via
     #   torch-geometric
     #   wandb
-scipy==1.16.1
+scikit-learn==1.7.1
     # via barygnn (pyproject.toml)
+scipy==1.16.1
+    # via
+    #   barygnn (pyproject.toml)
+    #   scikit-learn
 sentry-sdk==2.33.2
     # via wandb
 setuptools==80.9.0
@@ -155,6 +162,8 @@ smmap==5.0.2
     # via gitdb
 sympy==1.14.0
     # via torch
+threadpoolctl==3.6.0
+    # via scikit-learn
 torch==2.7.1
     # via barygnn (pyproject.toml)
 torch-geometric==2.6.1
