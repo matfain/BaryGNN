@@ -60,13 +60,17 @@ class MultiHeadEncoder(nn.Module):
         else:
             raise ValueError(f"Unknown encoder type: {base_encoder_type}")
         
+        # Filter out multi-head specific parameters that shouldn't be passed to base encoder
+        multi_head_params = {'shared_layers', 'multi_head_type', 'distribution_size'}
+        base_encoder_kwargs = {k: v for k, v in encoder_kwargs.items() if k not in multi_head_params}
+        
         # Shared initial layers (if any)
         if shared_layers > 0:
             self.shared_encoder = encoder_class(
                 in_dim=in_dim,
                 hidden_dim=hidden_dim,
                 num_layers=shared_layers,
-                **{k: v for k, v in encoder_kwargs.items() if k != 'num_layers'}
+                **{k: v for k, v in base_encoder_kwargs.items() if k != 'num_layers'}
             )
             head_in_dim = hidden_dim
         else:
@@ -77,7 +81,7 @@ class MultiHeadEncoder(nn.Module):
         self.encoder_heads = nn.ModuleList()
         for i in range(num_heads):
             # Each head gets its own encoder with remaining layers
-            remaining_layers = encoder_kwargs.get('num_layers', 3) - shared_layers
+            remaining_layers = base_encoder_kwargs.get('num_layers', 3) - shared_layers
             if remaining_layers <= 0:
                 remaining_layers = 1
                 
@@ -85,7 +89,7 @@ class MultiHeadEncoder(nn.Module):
                 in_dim=head_in_dim,
                 hidden_dim=hidden_dim,
                 num_layers=remaining_layers,
-                **{k: v for k, v in encoder_kwargs.items() if k != 'num_layers'}
+                **{k: v for k, v in base_encoder_kwargs.items() if k != 'num_layers'}
             )
             self.encoder_heads.append(head_encoder)
         
@@ -168,11 +172,15 @@ class EfficientMultiHeadEncoder(nn.Module):
         else:
             raise ValueError(f"Unknown encoder type: {base_encoder_type}")
         
+        # Filter out multi-head specific parameters that shouldn't be passed to base encoder
+        multi_head_params = {'shared_layers', 'multi_head_type', 'distribution_size'}
+        base_encoder_kwargs = {k: v for k, v in encoder_kwargs.items() if k not in multi_head_params}
+        
         # Shared backbone encoder
         self.backbone = encoder_class(
             in_dim=in_dim,
             hidden_dim=hidden_dim,
-            **encoder_kwargs
+            **base_encoder_kwargs
         )
         
         # Individual projection heads

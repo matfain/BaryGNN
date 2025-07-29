@@ -54,13 +54,13 @@ class POTBarycentricPooling(nn.Module):
                 "Install it with: pip install POT"
             )
         
-        self.hidden_dim = hidden_dim
-        self.codebook_size = codebook_size
-        self.epsilon = epsilon
-        self.max_iter = max_iter
-        self.tol = tol
-        self.p = p
-        self.debug_mode = debug_mode
+        self.hidden_dim = int(hidden_dim)
+        self.codebook_size = int(codebook_size)
+        self.epsilon = float(epsilon)
+        self.max_iter = int(max_iter)
+        self.tol = float(tol)
+        self.p = int(p)
+        self.debug_mode = bool(debug_mode)
         
         logger.info(f"Initializing POTBarycentricPooling with codebook_size={codebook_size}, "
                    f"epsilon={epsilon}, max_iter={max_iter}, tol={tol}, p={p}")
@@ -117,6 +117,12 @@ class POTBarycentricPooling(nn.Module):
         
         # Use POT's Sinkhorn algorithm
         try:
+            # Ensure all parameters are numeric
+            reg = float(reg)
+            numItermax = int(numItermax)
+            stopThr = float(stopThr)
+            verbose = bool(verbose)
+            
             # Use entropic regularized OT
             transport_plan = ot.sinkhorn(a_np, b_np, M_np, reg, 
                                        numItermax=numItermax, 
