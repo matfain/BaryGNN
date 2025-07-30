@@ -312,26 +312,4 @@ class POTBarycentricPooling(nn.Module):
             barycenter_weights[nan_mask] = uniform_weights
             logger.warning(f"Replaced {nan_mask.sum().item()} NaN values in final barycenter weights")
         
-        return barycenter_weights
-
-
-def create_barycentric_pooling(**kwargs) -> nn.Module:
-    """
-    Factory function to create POT-based barycentric pooling modules.
-    
-    Args:
-        **kwargs: Additional arguments for the POT pooling module
-        
-    Returns:
-        POT barycentric pooling module instance
-        
-    Raises:
-        ImportError: If POT is not available
-    """
-    if not HAS_POT:
-        raise ImportError(
-            "POT is required for barycentric pooling. "
-            "Install it with: pip install POT"
-        )
-    
-    return POTBarycentricPooling(**kwargs) 
+        return barycenter_weights 

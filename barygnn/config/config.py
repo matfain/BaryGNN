@@ -10,7 +10,6 @@ class EncoderConfig:
     
     type: str = "GIN"  # GIN or GraphSAGE
     in_dim: int = 0  # Will be set based on dataset
-    # hidden_dim removed - now uses model.hidden_dim
     num_layers: int = 3
     dropout: float = 0.5
     aggr: str = "mean"  # For GraphSAGE
@@ -25,13 +24,13 @@ class EncoderConfig:
 class PoolingConfig:
     """Enhanced configuration for the barycentric pooling."""
     
+    backend: str = "pot"  # "pot" or "geomloss"
     codebook_size: int = 16
-    
-    # POT parameters
     epsilon: float = 0.2
     max_iter: int = 100  # Maximum Sinkhorn iterations for POT
     tol: float = 1e-6    # Convergence tolerance for POT
     p: int = 2  # Order of Wasserstein distance
+    scaling: float = 0.9  # Only used for GeomLoss
 
 
 @dataclass
@@ -276,11 +275,13 @@ class Config:
                     "distribution_size": self.model.encoder.distribution_size,
                 },
                 "pooling": {
+                    "backend": self.model.pooling.backend,
                     "codebook_size": self.model.pooling.codebook_size,
                     "epsilon": self.model.pooling.epsilon,
                     "max_iter": self.model.pooling.max_iter,
                     "tol": self.model.pooling.tol,
                     "p": self.model.pooling.p,
+                    "scaling": self.model.pooling.scaling,
                 },
                 "classification": {
                     "type": self.model.classification.type,
@@ -369,9 +370,11 @@ class Config:
             'shared_layers': self.model.encoder.shared_layers,
             
             # Pooling parameters
+            'backend': self.model.pooling.backend,
             'sinkhorn_epsilon': self.model.pooling.epsilon,
             'max_iter': self.model.pooling.max_iter,
             'tol': self.model.pooling.tol,
+            'scaling': self.model.pooling.scaling,
             
             # Classification parameters
             'classifier_type': self.model.classification.type,

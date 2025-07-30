@@ -5,7 +5,7 @@ from typing import Dict, Any, Optional, Union, List, Tuple, Literal
 import logging
 
 from barygnn.models.encoders.multi_head import create_multi_head_encoder
-from barygnn.models.pooling.pot_pooling import create_barycentric_pooling
+from barygnn.models.pooling import create_barycentric_pooling
 from barygnn.models.readout.readout import Readout
 from barygnn.models.classification.enhanced_mlp import create_classifier
 from barygnn.losses.regularization import compute_distribution_regularization
