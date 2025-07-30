@@ -5,21 +5,23 @@ model:
   version: "v2"
   hidden_dim: 64  # Unified dimension for encoder output AND codebook atoms
   readout_type: "weighted_mean"  # "weighted_mean" or "concat"
-  debug_mode: false
+  debug_mode: true
   
   encoder:
     type: "GIN"  # "GIN" or "GraphSAGE"
     in_dim: 0  # Will be set based on dataset
     num_layers: 3
-    dropout: 0.5
-    aggr: "mean"  # For GraphSAGE
+    dropout: 0.3
+    aggr: "sum"  # For GraphSAGE
     multi_head_type: "efficient"  # "full" or "efficient"
     shared_layers: 1
     distribution_size: 32  # Number of vectors per node
   
   pooling:
+    backend: "geomloss"      # "pot" to keep current NumPy implementation
     codebook_size: 32  # Each atom has dimension model.hidden_dim
-    epsilon: 0.2
+    epsilon: 0.3
+    scaling: 0.9             # optional; default .9 is usually fine
     max_iter: 100
     tol: 1e-6
     p: 2
@@ -32,7 +34,7 @@ model:
     hidden_dims: [256, 128, 64]
     use_residual: true
     residual_type: "add"  # "add", "concat"
-    final_dropout: 0.5
+    final_dropout: 0.3
     depth_factor: 1.0  # For adaptive
     width_factor: 1.0  # For adaptive
     hidden_dim: 256  # For deep_residual and simple
@@ -56,9 +58,9 @@ data:
 
 training:
   num_epochs: 300
-  lr: 0.001
+  lr: 0.0001
   weight_decay: 0.0005
-  patience: 20
+  patience: 60
   metric: "accuracy"
   device: "cuda"
   scheduler: null  # "cosine", "step", "plateau"
