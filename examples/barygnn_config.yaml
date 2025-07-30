@@ -1,4 +1,4 @@
-experiment_name: "barygnn-v2-default"
+experiment_name: "barygnn-PROTEINS"
 seed: 42
 
 model:
@@ -49,7 +49,7 @@ model:
     lambda_reg: 0.2
 
 data:
-  name: "MUTAG"
+  name: "PROTEINS"
   batch_size: 64
   num_workers: 4
   split_seed: 42
