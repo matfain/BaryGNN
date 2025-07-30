@@ -10,7 +10,6 @@ model:
   encoder:
     type: "GIN"  # "GIN" or "GraphSAGE"
     in_dim: 0  # Will be set based on dataset
-    # hidden_dim removed - uses global model.hidden_dim
     num_layers: 3
     dropout: 0.5
     aggr: "mean"  # For GraphSAGE
@@ -75,7 +74,7 @@ wandb:
   enabled: true
   project: "BaryGNN"
   entity: null
-  api_key: null  # Set via environment variable
+  api_key: 1cf1eb10b27e2214f8d38aa573fdacb7af0ed6c2  # Set via environment variable
   tags: []
   notes: null
   save_code: true
