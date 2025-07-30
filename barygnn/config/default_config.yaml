@@ -3,14 +3,14 @@ seed: 42
 
 model:
   version: "v2"
-  hidden_dim: 64
+  hidden_dim: 64  # Unified dimension for encoder output AND codebook atoms
   readout_type: "weighted_mean"  # "weighted_mean" or "concat"
   debug_mode: false
   
   encoder:
     type: "GIN"  # "GIN" or "GraphSAGE"
     in_dim: 0  # Will be set based on dataset
-    hidden_dim: 64
+    # hidden_dim removed - uses global model.hidden_dim
     num_layers: 3
     dropout: 0.5
     aggr: "mean"  # For GraphSAGE
@@ -19,7 +19,7 @@ model:
     distribution_size: 32  # Number of vectors per node
   
   pooling:
-    codebook_size: 32
+    codebook_size: 32  # Each atom has dimension model.hidden_dim
     epsilon: 0.2
     max_iter: 100
     tol: 1e-6

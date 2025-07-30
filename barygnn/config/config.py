@@ -10,7 +10,7 @@ class EncoderConfig:
     
     type: str = "GIN"  # GIN or GraphSAGE
     in_dim: int = 0  # Will be set based on dataset
-    hidden_dim: int = 64
+    # hidden_dim removed - now uses model.hidden_dim
     num_layers: int = 3
     dropout: float = 0.5
     aggr: str = "mean"  # For GraphSAGE
@@ -268,7 +268,6 @@ class Config:
                 "encoder": {
                     "type": self.model.encoder.type,
                     "in_dim": self.model.encoder.in_dim,
-                    "hidden_dim": self.model.encoder.hidden_dim,
                     "num_layers": self.model.encoder.num_layers,
                     "dropout": self.model.encoder.dropout,
                     "aggr": self.model.encoder.aggr,
@@ -379,6 +378,8 @@ class Config:
             'classifier_hidden_dims': self.model.classification.hidden_dims,
             'classifier_dropout': self.model.classification.dropout,
             'classifier_activation': self.model.classification.activation,
+            'classifier_depth_factor': self.model.classification.depth_factor,
+            'classifier_width_factor': self.model.classification.width_factor,
             
             # Regularization parameters
             'use_distribution_reg': self.model.regularization.enabled,

@@ -195,7 +195,7 @@ class POTBarycentricPooling(nn.Module):
                 f"  \n"
                 f"  The encoder is outputting vectors of dimension {feat_dim}\n"
                 f"  but the codebook expects dimension {self.codebook.size(1)}.\n"
-                f"  Check your configuration: encoder.hidden_dim should equal model.hidden_dim"
+                f"  Check your configuration: model.hidden_dim should be consistent throughout"
             )
             logger.error(error_msg)
             raise ValueError(error_msg)

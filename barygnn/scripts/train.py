@@ -209,14 +209,14 @@ def create_model(config: Config, num_features: int, num_classes: int) -> nn.Modu
     if config.model.encoder.type == "GIN":
         encoder = GIN(
             in_dim=config.model.encoder.in_dim,
-            hidden_dim=config.model.encoder.hidden_dim,
+            hidden_dim=config.model.hidden_dim,  # Use global hidden_dim
             num_layers=config.model.encoder.num_layers,
             dropout=config.model.encoder.dropout,
         )
     elif config.model.encoder.type == "GraphSAGE":
         encoder = GraphSAGE(
             in_dim=config.model.encoder.in_dim,
-            hidden_dim=config.model.encoder.hidden_dim,
+            hidden_dim=config.model.hidden_dim,  # Use global hidden_dim
             num_layers=config.model.encoder.num_layers,
             dropout=config.model.encoder.dropout,
             aggr=config.model.encoder.aggr,

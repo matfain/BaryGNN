@@ -54,6 +54,8 @@ class BaryGNN(nn.Module):
         classifier_hidden_dims: Union[List[int], int] = [256, 128, 64],
         classifier_dropout: float = 0.2,
         classifier_activation: str = "relu",
+        classifier_depth_factor: float = 1.0,  # For AdaptiveMLP
+        classifier_width_factor: float = 1.0,  # For AdaptiveMLP
         
         # Regularization parameters
         use_distribution_reg: bool = True,
@@ -153,11 +155,15 @@ class BaryGNN(nn.Module):
             'activation': classifier_activation
         }
         
-        if classifier_type in ["enhanced", "adaptive"]:
+        if classifier_type == "enhanced":
             if isinstance(classifier_hidden_dims, list):
                 classifier_kwargs['hidden_dims'] = classifier_hidden_dims
             else:
                 classifier_kwargs['hidden_dims'] = [classifier_hidden_dims, classifier_hidden_dims // 2]
+        elif classifier_type == "adaptive":
+            # AdaptiveMLP doesn't use hidden_dims, it uses depth_factor and width_factor
+            classifier_kwargs['depth_factor'] = classifier_depth_factor
+            classifier_kwargs['width_factor'] = classifier_width_factor
         elif classifier_type == "deep_residual":
             classifier_kwargs['hidden_dim'] = classifier_hidden_dims if isinstance(classifier_hidden_dims, int) else classifier_hidden_dims[0]
             classifier_kwargs['num_blocks'] = 3
