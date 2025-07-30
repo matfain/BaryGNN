@@ -18,6 +18,8 @@ class EncoderConfig:
     multi_head_type: str = "efficient"  # "full" or "efficient"
     shared_layers: int = 1
     distribution_size: int = 32  # Number of vectors per node (moved from pooling)
+    projection_depth: int = 2  # Number of layers in each projection head (efficient only)
+    projection_width_factor: float = 1.0  # Width multiplier for hidden layers in projection head (efficient only)
 
 
 @dataclass
@@ -273,6 +275,8 @@ class Config:
                     "multi_head_type": self.model.encoder.multi_head_type,
                     "shared_layers": self.model.encoder.shared_layers,
                     "distribution_size": self.model.encoder.distribution_size,
+                    "projection_depth": self.model.encoder.projection_depth,
+                    "projection_width_factor": self.model.encoder.projection_width_factor,
                 },
                 "pooling": {
                     "backend": self.model.pooling.backend,
@@ -368,6 +372,8 @@ class Config:
             'encoder_dropout': self.model.encoder.dropout,
             'multi_head_type': self.model.encoder.multi_head_type,
             'shared_layers': self.model.encoder.shared_layers,
+            'projection_depth': self.model.encoder.projection_depth,
+            'projection_width_factor': self.model.encoder.projection_width_factor,
             
             # Pooling parameters
             'backend': self.model.pooling.backend,

@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from typing import Type, Dict, Any, Optional
 import logging
+import numpy as np
 
 from barygnn.models.encoders.base import BaseEncoder
 from barygnn.models.encoders.gin import GIN
@@ -142,6 +143,8 @@ class EfficientMultiHeadEncoder(nn.Module):
         in_dim: int,
         hidden_dim: int,
         num_heads: int = 32,
+        projection_depth: int = 2,
+        projection_width_factor: float = 1.0,
         **encoder_kwargs
     ):
         """
@@ -152,6 +155,8 @@ class EfficientMultiHeadEncoder(nn.Module):
             in_dim: Input feature dimension
             hidden_dim: Hidden dimension for each head
             num_heads: Number of encoder heads (distribution_size)
+            projection_depth: Number of layers in each projection head
+            projection_width_factor: Width multiplier for hidden layers in projection head
             **encoder_kwargs: Additional arguments for base encoder
         """
         super(EfficientMultiHeadEncoder, self).__init__()
@@ -160,9 +165,9 @@ class EfficientMultiHeadEncoder(nn.Module):
         self.hidden_dim = hidden_dim
         self.num_heads = num_heads
         self.base_encoder_type = base_encoder_type
-        
-        logger.info(f"Initializing EfficientMultiHeadEncoder with {num_heads} heads, "
-                   f"base_encoder={base_encoder_type}")
+        self.projection_depth = projection_depth
+        self.projection_width_factor = projection_width_factor
+        logger.info(f"Initializing EfficientMultiHeadEncoder with {num_heads} heads, base_encoder={base_encoder_type}, projection_depth={projection_depth}, projection_width_factor={projection_width_factor}")
         
         # Get the base encoder class
         if base_encoder_type == "GIN":
@@ -173,7 +178,7 @@ class EfficientMultiHeadEncoder(nn.Module):
             raise ValueError(f"Unknown encoder type: {base_encoder_type}")
         
         # Filter out multi-head specific parameters that shouldn't be passed to base encoder
-        multi_head_params = {'shared_layers', 'multi_head_type', 'distribution_size'}
+        multi_head_params = {'shared_layers', 'multi_head_type', 'distribution_size', 'projection_depth', 'projection_width_factor'}
         base_encoder_kwargs = {k: v for k, v in encoder_kwargs.items() if k not in multi_head_params}
         
         # Shared backbone encoder
@@ -185,17 +190,24 @@ class EfficientMultiHeadEncoder(nn.Module):
         
         # Individual projection heads
         self.projection_heads = nn.ModuleList()
+        max_width = max(1, int(hidden_dim * projection_width_factor))
         for i in range(num_heads):
-            # Each head has a small MLP to create diversity
-            head = nn.Sequential(
-                nn.Linear(hidden_dim, hidden_dim),
-                nn.BatchNorm1d(hidden_dim),
-                nn.ReLU(),
-                nn.Linear(hidden_dim, hidden_dim)
-            )
-            self.projection_heads.append(head)
-        
-        logger.debug(f"Created backbone encoder and {len(self.projection_heads)} projection heads")
+            layers = []
+            if projection_depth < 2:
+                raise ValueError("projection_depth must be at least 2")
+            # Compute widths: up then down
+            up_depth = (projection_depth + 1) // 2
+            down_depth = projection_depth - up_depth + 1
+            up_widths = np.linspace(hidden_dim, max_width, num=up_depth, dtype=int)
+            down_widths = np.linspace(max_width, hidden_dim, num=down_depth, dtype=int)[1:]
+            widths = np.concatenate([up_widths, down_widths])
+            for in_features, out_features in zip(widths[:-1], widths[1:]):
+                layers.append(nn.Linear(in_features, out_features))
+                if out_features != hidden_dim:
+                    layers.append(nn.BatchNorm1d(out_features))
+                    layers.append(nn.ReLU())
+            self.projection_heads.append(nn.Sequential(*layers))
+        logger.debug(f"Created backbone encoder and {len(self.projection_heads)} hourglass projection heads")
     
     def forward(self, x, edge_index, edge_attr=None):
         """
