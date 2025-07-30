@@ -1,4 +1,4 @@
-experiment_name: "barygnn-v2-default"
+experiment_name: "barygnn-MUTAG-hierarchical"
 seed: 42
 
 model:
@@ -18,11 +18,12 @@ model:
     distribution_size: 16           # Number of vectors per node
     projection_depth: 4             # Number of layers in each projection head (hourglass MLP)
     projection_width_factor: 4.0    # Max width multiplier for hourglass MLP
-  
+
   pooling:
-    backend: "geomloss"             # "pot" to keep current NumPy implementation
-    codebook_size: 64               # Each atom has dimension model.hidden_dim
-    epsilon: 0.3
+    backend: "hierarchical"        # New hierarchical pooling
+    codebook_size: 64
+    epsilon_node: 0.3              # Stage 1: Node samples → Node histograms
+    epsilon_graph: 0.2             # Stage 2: Node histograms → Graph histogram
     scaling: 0.9                    # optional; default .9 is usually fine
     max_iter: 100
     tol: 1e-6

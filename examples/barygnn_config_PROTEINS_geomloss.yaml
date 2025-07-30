@@ -13,7 +13,7 @@ model:
     num_layers: 10
     dropout: 0.3
     aggr: "sum"                     # For GraphSAGE
-    multi_head_type: "efficient"    # "full" or "efficient"
+    multi_head_type: "full"         # "full" or "efficient"
     shared_layers: 2                # relevant only for full multi-head encoder
     distribution_size: 16           # Number of vectors per node
     projection_depth: 4             # Number of layers in each projection head (hourglass MLP)

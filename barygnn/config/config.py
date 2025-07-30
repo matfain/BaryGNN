@@ -26,11 +26,13 @@ class EncoderConfig:
 class PoolingConfig:
     """Enhanced configuration for the barycentric pooling."""
     
-    backend: str = "pot"  # "pot" or "geomloss"
+    backend: str = "pot"  # "pot", "geomloss", or "hierarchical"
     codebook_size: int = 16
     epsilon: float = 0.2
-    max_iter: int = 100  # Maximum Sinkhorn iterations for POT
-    tol: float = 1e-6    # Convergence tolerance for POT
+    epsilon_node: float = 0.3    # Stage 1 epsilon for hierarchical pooling
+    epsilon_graph: float = 0.1   # Stage 2 epsilon for hierarchical pooling
+    max_iter: int = 100  # Maximum Sinkhorn iterations
+    tol: float = 1e-6    # Convergence tolerance
     p: int = 2  # Order of Wasserstein distance
     scaling: float = 0.9  # Only used for GeomLoss
 
@@ -282,6 +284,8 @@ class Config:
                     "backend": self.model.pooling.backend,
                     "codebook_size": self.model.pooling.codebook_size,
                     "epsilon": self.model.pooling.epsilon,
+                    "epsilon_node": self.model.pooling.epsilon_node,
+                    "epsilon_graph": self.model.pooling.epsilon_graph,
                     "max_iter": self.model.pooling.max_iter,
                     "tol": self.model.pooling.tol,
                     "p": self.model.pooling.p,
@@ -378,6 +382,8 @@ class Config:
             # Pooling parameters
             'backend': self.model.pooling.backend,
             'sinkhorn_epsilon': self.model.pooling.epsilon,
+            'epsilon_node': self.model.pooling.epsilon_node,
+            'epsilon_graph': self.model.pooling.epsilon_graph,
             'max_iter': self.model.pooling.max_iter,
             'tol': self.model.pooling.tol,
             'scaling': self.model.pooling.scaling,

@@ -130,15 +130,31 @@ def evaluate(model, loader, device):
     
     return avg_loss, metrics
 
-def main():
+def main(args=None):
     """Main training function."""
-    parser = argparse.ArgumentParser(description='BaryGNN v2 Configuration-Based Training')
-    parser.add_argument('--config', type=str, default='examples/barygnn_v2_config.yaml',
-                       help='Path to configuration file')
-    args = parser.parse_args()
-    
+    if args is None:
+        import argparse
+        parser = argparse.ArgumentParser(description='BaryGNN v2 Configuration-Based Training')
+        parser.add_argument('--config', type=str, default='examples/barygnn_v2_config.yaml',
+                           help='Path to configuration file')
+        parser.add_argument('--logdir', type=str, default='logs',
+                           help='Directory to save logs')
+        args = parser.parse_args()
+
     # Create logs directory
-    os.makedirs('logs', exist_ok=True)
+    os.makedirs(args.logdir, exist_ok=True)
+
+    # Set up logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.StreamHandler(),
+            logging.FileHandler(os.path.join(args.logdir, 'barygnn_config.log'))
+        ],
+        force=True  # Ensures our handlers are always used
+    )
+    logger = logging.getLogger(__name__)
     
     # Load configuration
     logger.info(f"Loading configuration from {args.config}")
@@ -321,4 +337,29 @@ def main():
     logger.info("Training completed successfully!")
 
 if __name__ == "__main__":
-    main() 
+    import argparse
+    parser = argparse.ArgumentParser(description='BaryGNN v2 Configuration-Based Training')
+    parser.add_argument('--config', type=str, default='examples/barygnn_v2_config.yaml',
+                       help='Path to configuration file')
+    parser.add_argument('--logdir', type=str, default='logs',
+                       help='Directory to save logs')
+    args = parser.parse_args()
+
+    # Create logs directory
+    os.makedirs(args.logdir, exist_ok=True)
+
+    # Set up logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.StreamHandler(),
+            logging.FileHandler(os.path.join(args.logdir, 'barygnn_config.log'))
+        ],
+        force=True  # Ensures our handlers are always used
+    )
+    logger = logging.getLogger(__name__)
+
+    # Pass args.config and args.logdir to main
+    main_args = argparse.Namespace(config=args.config, logdir=args.logdir)
+    main(main_args) 
