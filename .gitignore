@@ -25,6 +25,5 @@ Thumbs.db
 anaconda3/
 wandb/
 logs/
-examples/
 data/
 checkpoints/
