@@ -34,203 +34,162 @@ class Codebook(nn.Module):
 
 class NodeSinkhornPooling(nn.Module):
     """
-    Stage 1: Transform node samples into histograms over the shared codebook.
-    
-    For each node, transport its S samples to K codebook atoms using Sinkhorn OT.
-    Uses encoder feature geometry (Euclidean distance).
+    Stage-1 OT: move S node-level samples to the K shared codebook atoms,
+    returning a K-dim histogram for every node.
     """
-    
-    def __init__(self, epsilon_node: float = 0.3, max_iter: int = 100, tol: float = 1e-6):
+
+    def __init__(self, epsilon_node: float = 0.3):
         super().__init__()
-        self.epsilon_node = epsilon_node
-        self.max_iter = max_iter
-        self.tol = tol
-        
-        # GeomLoss Sinkhorn solver for node-level transport
+        self.epsilon = epsilon_node            # blur in Sinkhorn
+        # We ask GeomLoss for dual potentials (size ≪ transport plan)
         self.sinkhorn = SamplesLoss(
-            "sinkhorn", 
-            p=2, 
-            blur=epsilon_node,
-            scaling=0.9,
-            backend="auto"
+            "sinkhorn", p=2, blur=self.epsilon,
+            scaling=0.9, backend="auto", potentials=True
         )
-        
-        logger.info(f"Initialized NodeSinkhornPooling with epsilon={epsilon_node}")
-    
+
+    # ------------------------------------------------------------------ helpers
+    @staticmethod
+    def _safe_uniform(size: int, device, dtype):
+        return torch.full((size,), 1.0 / size, device=device, dtype=dtype)
+
+    # ----------------------------------------------------------------- forward
     def forward(self, samples: torch.Tensor, codebook: torch.Tensor) -> torch.Tensor:
         """
-        Transport node samples to codebook atoms.
-        
-        Args:
-            samples: Node samples [N, S, d]
-            codebook: Codebook atoms [K, d]
-            
-        Returns:
-            node_histograms: Node histograms over codebook [N, K]
+        Args
+        ----
+        samples   : (N, S, d)   node-level embeddings
+        codebook  : (K, d)      shared atoms
+
+        Returns
+        -------
+        (N, K) tensor of per-node histograms.
         """
         N, S, d = samples.shape
         K, _ = codebook.shape
-        
-        node_histograms = []
-        
+        device, dtype = samples.device, samples.dtype
+
+        # Uniform source / target masses (shared across nodes)
+        a = self._safe_uniform(S, device, dtype)      # (S,)
+        b = self._safe_uniform(K, device, dtype)      # (K,)
+
+        histograms = []
+
         for i in range(N):
-            # Get samples for this node
-            node_samples = samples[i]  # [S, d]
-            
-            # Uniform weights
-            a = torch.ones(S, device=samples.device, dtype=samples.dtype) / S
-            b = torch.ones(K, device=codebook.device, dtype=codebook.dtype) / K
-            
-            # Compute transport plan using GeomLoss
-            transport_plan = self.sinkhorn.transport(a, node_samples, b, codebook)  # [S, K]
-            
-            # Get histogram as column sum
-            histogram = transport_plan.sum(dim=0)  # [K]
-            histogram = histogram / histogram.sum()  # Normalize
-            
-            node_histograms.append(histogram)
-        
-        return torch.stack(node_histograms, dim=0)  # [N, K]
+            X = samples[i]                            # (S, d)
+
+            # 1. dual potentials (GeomLoss adds a leading batch dim → squeeze)
+            Fi, Gj = self.sinkhorn(a, X, b, codebook)
+            Fi, Gj = Fi.squeeze(0), Gj.squeeze(0)     # (S,), (K,)
+
+            # 2. cost matrix ‖x_i - c_j‖²
+            C = torch.cdist(X, codebook, p=2).pow(2)  # (S, K)
+
+            # 3. log-space transport plan
+            log_pi = (Fi[:, None] + Gj[None, :] - C) / self.epsilon
+            log_pi += torch.log(a)[:, None] + torch.log(b)[None, :]
+
+            # 4. column sums → histogram
+            hist = torch.exp(torch.logsumexp(log_pi, dim=0))  # (K,)
+            hist = hist / (hist.sum() + 1e-12)                # normalise
+
+            histograms.append(hist)
+
+        return torch.stack(histograms, dim=0)          # (N, K)
 
 
 class GraphSinkhornPooling(nn.Module):
     """
-    Stage 2: Transform node histograms into graph histogram using Wasserstein-on-atoms.
-    
-    Uses pre-computed atom-atom distances to define costs between node histograms
-    and canonical simplex points. No nested Sinkhorn - just matrix-vector operations.
+    Stage-2 OT: move each node histogram to a *single* graph-level histogram,
+    using the Wasserstein geometry *induced* by the codebook.
     """
-    
+
     def __init__(self, epsilon_graph: float = 0.1, max_iter: int = 100, tol: float = 1e-6):
         super().__init__()
-        self.epsilon_graph = epsilon_graph
-        self.max_iter = max_iter
-        self.tol = tol
-        
-        # GeomLoss Sinkhorn solver for graph-level transport
-        self.sinkhorn = SamplesLoss(
-            "sinkhorn",
-            p=2,
-            blur=epsilon_graph,
-            scaling=0.9,
-            backend="auto"
-        )
-        
-        # Will store pre-computed atom-atom distances
-        self.register_buffer('atom_distances', None)
-        
-        logger.info(f"Initialized GraphSinkhornPooling with epsilon={epsilon_graph}")
-    
+        self.epsilon = epsilon_graph
+        self.max_iter, self.tol = max_iter, tol
+        self.register_buffer("atom_distances", None)
+
+    # ---------------------------------------------------------- pre-compute Dᵢⱼ
     def _precompute_atom_distances(self, codebook: torch.Tensor):
-        """Pre-compute pairwise distances between codebook atoms."""
-        # D[i,j] = ||C_i - C_j||^2
-        self.atom_distances = torch.cdist(codebook, codebook, p=2).pow(2)  # [K, K]
-        logger.debug(f"Pre-computed atom distances matrix: {self.atom_distances.shape}")
-    
-    def forward(self, node_histograms: torch.Tensor, batch_idx: torch.Tensor, 
-                codebook: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        # D[i,j] = ‖c_i − c_j‖²  (used as cost between simplex vertices)
+        self.atom_distances = torch.cdist(codebook, codebook, p=2).pow(2)
+
+    # -------------------------------------------------------- manual Sinkhorn
+    def _sinkhorn_log(self, a: torch.Tensor, b: torch.Tensor, M: torch.Tensor) -> torch.Tensor:
         """
-        Transport node histograms to graph histogram using atom geometry.
-        
-        Args:
-            node_histograms: Node histograms [N, K]
-            batch_idx: Batch indices [N]
-            codebook: Codebook atoms [K, d]
-            
-        Returns:
-            graph_histograms: Graph histograms [B, K]
-            graph_embeddings: Graph embeddings [B, d]
-        """
-        # Pre-compute atom distances if needed
-        if self.atom_distances is None or self.atom_distances.shape[0] != codebook.shape[0]:
-            self._precompute_atom_distances(codebook)
-        
-        B = int(batch_idx.max().item()) + 1
-        K = codebook.shape[0]
-        
-        graph_histograms = []
-        
-        for b in range(B):
-            # Get node histograms for this graph
-            mask = batch_idx == b
-            graph_node_hists = node_histograms[mask]  # [|V_g|, K]
-            
-            if graph_node_hists.numel() == 0:
-                # Empty graph - use uniform histogram
-                uniform_hist = torch.ones(K, device=codebook.device, dtype=codebook.dtype) / K
-                graph_histograms.append(uniform_hist)
-                continue
-            
-            num_nodes = graph_node_hists.shape[0]
-            
-            # Compute cost matrix M[i,k] = w_i @ D[:,k]
-            # This is the expected distance from node i's histogram to atom k
-            cost_matrix = torch.matmul(graph_node_hists, self.atom_distances)  # [|V_g|, K]
-            
-            # Uniform weights for nodes and atoms
-            p = torch.ones(num_nodes, device=codebook.device, dtype=codebook.dtype) / num_nodes
-            q = torch.ones(K, device=codebook.device, dtype=codebook.dtype) / K
-            
-            # Use GeomLoss with pre-computed cost matrix
-            # We need to create dummy point clouds that will give us the desired cost matrix
-            # For now, use a simpler approach with manual Sinkhorn
-            transport_plan = self._manual_sinkhorn(p, q, cost_matrix)  # [|V_g|, K]
-            
-            # Graph histogram as column sum
-            graph_hist = transport_plan.sum(dim=0)  # [K]
-            graph_hist = graph_hist / graph_hist.sum()  # Normalize
-            
-            graph_histograms.append(graph_hist)
-        
-        graph_histograms = torch.stack(graph_histograms, dim=0)  # [B, K]
-        
-        # Compute graph embeddings as weighted sum of codebook atoms
-        graph_embeddings = torch.matmul(graph_histograms, codebook)  # [B, d]
-        
-        return graph_histograms, graph_embeddings
-    
-    def _manual_sinkhorn(self, a: torch.Tensor, b: torch.Tensor, M: torch.Tensor) -> torch.Tensor:
-        """
-        Manual Sinkhorn iteration with pre-computed cost matrix.
-        
-        Args:
-            a: Source weights [n]
-            b: Target weights [m] 
-            M: Cost matrix [n, m]
-            
-        Returns:
-            transport_plan: Transport plan [n, m]
+        Log-domain Sinkhorn with a *fixed* cost matrix M.
+
+        Args
+        ----
+        a : (n,)   source masses  (nodes)
+        b : (m,)   target masses  (atoms)
+        M : (n,m)  cost matrix    (<node hist>, <atom>)
+
+        Returns
+        -------
+        π : (n,m)  optimal transport plan.
         """
         n, m = M.shape
-        
-        # Initialize dual variables
+        K_log = -M / self.epsilon                     # log K = −C/ε
+
         u = torch.zeros(n, device=M.device, dtype=M.dtype)
         v = torch.zeros(m, device=M.device, dtype=M.dtype)
-        
-        # Sinkhorn iterations
-        K = torch.exp(-M / self.epsilon_graph)  # [n, m]
-        
+
         for _ in range(self.max_iter):
             u_prev = u.clone()
-            
-            # Update u
-            u = torch.log(a + 1e-8) - torch.logsumexp(
-                torch.log(K + 1e-8) + v.unsqueeze(0), dim=1
-            )
-            
-            # Update v  
-            v = torch.log(b + 1e-8) - torch.logsumexp(
-                torch.log(K + 1e-8) + u.unsqueeze(1), dim=0
-            )
-            
-            # Check convergence
-            if torch.norm(u - u_prev) < self.tol:
+
+            u = torch.log(a + 1e-12) - torch.logsumexp(K_log + v[None, :], dim=1)
+            v = torch.log(b + 1e-12) - torch.logsumexp(K_log + u[:, None], dim=0)
+
+            if torch.norm(u - u_prev, p=1) < self.tol:
                 break
-        
-        # Compute transport plan
-        transport_plan = torch.exp(u.unsqueeze(1) + v.unsqueeze(0)) * K
-        
-        return transport_plan
+
+        return torch.exp(u[:, None] + v[None, :] + K_log)   # π = diag(e^u) K diag(e^v)
+
+    # --------------------------------------------------------------- forward
+    def forward(
+        self,
+        node_histograms: torch.Tensor,   # (N, K)
+        batch_idx:       torch.Tensor,   # (N,)
+        codebook:        torch.Tensor    # (K, d)
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+
+        # -- ensure we have D (K×K)
+        if self.atom_distances is None or self.atom_distances.size(0) != codebook.size(0):
+            self._precompute_atom_distances(codebook)
+
+        K = codebook.size(0)
+        B = int(batch_idx.max().item()) + 1
+        device, dtype = codebook.device, codebook.dtype
+
+        graph_hists = []
+
+        for b in range(B):
+            mask = (batch_idx == b)
+            V = mask.sum().item()
+
+            if V == 0:   # empty graph → uniform
+                graph_hists.append(torch.full((K,), 1.0 / K, device=device, dtype=dtype))
+                continue
+
+            H = node_histograms[mask]                  # (V, K)
+
+            # Cost matrix M_{vk} = h_v · D[:,k}
+            M = H @ self.atom_distances                # (V, K)
+
+            a = torch.full((V,), 1.0 / V, device=device, dtype=dtype)
+            b = torch.full((K,), 1.0 / K, device=device, dtype=dtype)
+
+            π = self._sinkhorn_log(a, b, M)            # (V, K)
+
+            hist = π.sum(dim=0)                        # column sums
+            hist = hist / (hist.sum() + 1e-12)
+            graph_hists.append(hist)
+
+        graph_hists = torch.stack(graph_hists, dim=0)           # (B, K)
+        graph_embs  = graph_hists @ codebook                    # (B, d)
+
+        return graph_hists, graph_embs
 
 
 class HierarchicalPooling(nn.Module):
