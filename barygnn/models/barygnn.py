@@ -36,6 +36,8 @@ class BaryGNN(nn.Module):
         codebook_size: int = 16,
         distribution_size: int = 32,
         readout_type: str = "weighted_mean",
+        combined_readout: str = "global_add_pool",  # For combined readout
+        barycentric_readout: str = "weighted_mean",  # For combined readout
         
         # Encoder parameters
         encoder_type: str = "GIN",
@@ -46,8 +48,6 @@ class BaryGNN(nn.Module):
         
         # Pooling parameters  
         sinkhorn_epsilon: float = 0.2,
-        max_iter: int = 100,
-        tol: float = 1e-6,
         
         # Classification parameters
         classifier_type: str = "enhanced",  # "simple", "enhanced", "adaptive", "deep_residual"
@@ -101,6 +101,8 @@ class BaryGNN(nn.Module):
         self.codebook_size = codebook_size
         self.distribution_size = distribution_size
         self.readout_type = readout_type
+        self.combined_readout = combined_readout
+        self.barycentric_readout = barycentric_readout
         self.use_distribution_reg = use_distribution_reg
         self.reg_type = reg_type
         self.reg_lambda = reg_lambda
@@ -130,8 +132,6 @@ class BaryGNN(nn.Module):
             'hidden_dim': hidden_dim,
             'codebook_size': codebook_size,
             'epsilon': sinkhorn_epsilon,
-            'max_iter': max_iter,
-            'tol': tol,
             'p': 2,
             'debug_mode': debug_mode
         }
@@ -142,11 +142,28 @@ class BaryGNN(nn.Module):
         self.readout = Readout(
             hidden_dim=hidden_dim,
             codebook_size=codebook_size,
-            readout_type=readout_type
+            readout_type=readout_type,
+            combined_readout=combined_readout,
+            barycentric_readout=barycentric_readout
         )
         
         # Classification head
-        classifier_input_dim = hidden_dim if readout_type == "weighted_mean" else hidden_dim * codebook_size
+        if readout_type == "weighted_mean":
+            classifier_input_dim = hidden_dim
+        elif readout_type == "concat":
+            # Concat: histogram_weights + flattened_codebook_atoms
+            # [batch_size, codebook_size + codebook_size * hidden_dim]
+            classifier_input_dim = codebook_size + codebook_size * hidden_dim
+        elif readout_type == "combined":
+            # Combined readout: barycentric + traditional pooling
+            if barycentric_readout == "concat":
+                barycentric_dim = codebook_size + codebook_size * hidden_dim  # histogram_weights + flattened_atoms
+            else:  # weighted_mean
+                barycentric_dim = hidden_dim
+            traditional_dim = hidden_dim  # Traditional pooling output dimension
+            classifier_input_dim = barycentric_dim + traditional_dim
+        else:
+            raise ValueError(f"Invalid readout_type: {readout_type}. Must be one of: 'weighted_mean', 'concat', 'combined'")
         
         classifier_kwargs = {
             'in_dim': classifier_input_dim,
@@ -308,6 +325,10 @@ class BaryGNN(nn.Module):
                                           device=barycenter_weights.device) / self.codebook_size
         
         # Apply readout to get graph embeddings
+        if self.readout_type == "combined":
+            # For combined readout, we need to pass node distributions to the readout
+            self.readout.set_node_data(node_distributions, batch_idx)
+        
         graph_embeddings = self.readout(barycenter_weights, self.pooling.codebook)
         
         # Debug graph embeddings
@@ -422,6 +443,7 @@ class BaryGNN(nn.Module):
             'codebook_size': self.codebook_size,
             'distribution_size': self.distribution_size,
             'readout_type': self.readout_type,
+            'combined_readout': self.combined_readout,
             'regularization': self.reg_type if self.use_distribution_reg else None,
             'encoder_type': type(self.encoder).__name__,
             'pooling_type': type(self.pooling).__name__,

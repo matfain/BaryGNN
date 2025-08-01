@@ -20,12 +20,11 @@ model:
     projection_width_factor: 2.0
   
   pooling:
-    backend: "hierarchical"        # New hierarchical pooling
+    backend: "hierarchical"  # Hierarchical pooling
     codebook_size: 32
     epsilon_node: 0.3              # Stage 1: Node samples → Node histograms
-    epsilon_graph: 0.1             # Stage 2: Node histograms → Graph histogram
-    max_iter: 100
-    tol: 1e-6
+    epsilon_graph: 0.2             # Stage 2: Node histograms → Graph histogram
+    p: 2
   
   classification:
     type: "enhanced"

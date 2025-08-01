@@ -31,8 +31,6 @@ class PoolingConfig:
     epsilon: float = 0.2
     epsilon_node: float = 0.3    # Stage 1 epsilon for hierarchical pooling
     epsilon_graph: float = 0.1   # Stage 2 epsilon for hierarchical pooling
-    max_iter: int = 100  # Maximum Sinkhorn iterations
-    tol: float = 1e-6    # Convergence tolerance
     p: int = 2  # Order of Wasserstein distance
     scaling: float = 0.9  # Only used for GeomLoss
 
@@ -81,7 +79,9 @@ class ModelConfig:
     
     version: str = "v2"  # Keep for backward compatibility
     hidden_dim: int = 64
-    readout_type: str = "weighted_mean"  # "weighted_mean" or "concat"
+    readout_type: str = "weighted_mean"  # "weighted_mean", "concat", or "combined"
+    combined_readout: str = "global_add_pool"  # For combined readout: "global_add_pool", "global_mean_pool", "global_max_pool"
+    barycentric_readout: str = "weighted_mean"  # For combined readout: "weighted_mean" or "concat"
     debug_mode: bool = False
     
     encoder: EncoderConfig = field(default_factory=EncoderConfig)
@@ -200,6 +200,8 @@ class Config:
                 version=model_dict.get("version", "v2"),
                 hidden_dim=model_dict.get("hidden_dim", 64),
                 readout_type=model_dict.get("readout_type", "weighted_mean"),
+                combined_readout=model_dict.get("combined_readout", "global_add_pool"),
+                barycentric_readout=model_dict.get("barycentric_readout", "weighted_mean"),
                 debug_mode=model_dict.get("debug_mode", False),
                 encoder=convert_encoder(encoder_dict),
                 pooling=convert_pooling(pooling_dict),
@@ -267,6 +269,8 @@ class Config:
                 "version": self.model.version,
                 "hidden_dim": self.model.hidden_dim,
                 "readout_type": self.model.readout_type,
+                "combined_readout": self.model.combined_readout,
+                "barycentric_readout": self.model.barycentric_readout,
                 "debug_mode": self.model.debug_mode,
                 "encoder": {
                     "type": self.model.encoder.type,
@@ -286,8 +290,6 @@ class Config:
                     "epsilon": self.model.pooling.epsilon,
                     "epsilon_node": self.model.pooling.epsilon_node,
                     "epsilon_graph": self.model.pooling.epsilon_graph,
-                    "max_iter": self.model.pooling.max_iter,
-                    "tol": self.model.pooling.tol,
                     "p": self.model.pooling.p,
                     "scaling": self.model.pooling.scaling,
                 },
@@ -369,6 +371,8 @@ class Config:
             'codebook_size': self.model.pooling.codebook_size,
             'distribution_size': self.model.encoder.distribution_size,
             'readout_type': self.model.readout_type,
+            'combined_readout': self.model.combined_readout,
+            'barycentric_readout': self.model.barycentric_readout,
             
             # Encoder parameters
             'encoder_type': self.model.encoder.type,
@@ -384,8 +388,7 @@ class Config:
             'sinkhorn_epsilon': self.model.pooling.epsilon,
             'epsilon_node': self.model.pooling.epsilon_node,
             'epsilon_graph': self.model.pooling.epsilon_graph,
-            'max_iter': self.model.pooling.max_iter,
-            'tol': self.model.pooling.tol,
+            'p': self.model.pooling.p,
             'scaling': self.model.pooling.scaling,
             
             # Classification parameters

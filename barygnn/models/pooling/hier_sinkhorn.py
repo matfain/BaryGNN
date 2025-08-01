@@ -249,22 +249,22 @@ class HierarchicalPooling(nn.Module):
         codebook_size: int = 32,
         epsilon_node: float = 0.3,
         epsilon_graph: float = 0.1,
-        max_iter: int = 100,
-        tol: float = 1e-6,
         debug_mode: bool = False
     ):
         super().__init__()
         
         self.hidden_dim = hidden_dim
         self.codebook_size = codebook_size
-        self.debug_mode = debug_mode
+        self.epsilon_node = epsilon_node
+        self.epsilon_graph = epsilon_graph
+        self.debug = debug_mode
         
         # Shared codebook
         self.codebook = Codebook(codebook_size, hidden_dim)
         
-        # Two-stage pooling
-        self.node_pool = NodeSinkhornPooling(epsilon_node, max_iter, tol)
-        self.graph_pool = GraphSinkhornPooling(epsilon_graph, max_iter, tol)
+        # Use default values for max_iter and tol
+        self.node_pool = NodeSinkhornPooling(epsilon_node, max_iter=100, tol=1e-6)
+        self.graph_pool = GraphSinkhornPooling(epsilon_graph, max_iter=100, tol=1e-6)
         
         logger.info(f"Initialized HierarchicalPooling: {codebook_size} atoms, "
                    f"ε_node={epsilon_node}, ε_graph={epsilon_graph}")
@@ -290,7 +290,7 @@ class HierarchicalPooling(nn.Module):
         graph_histograms, graph_embeddings = self.graph_pool(node_histograms, batch_idx, C)
         
         # Debug logging
-        if self.debug_mode:
+        if self.debug:
             self._log_debug_info(node_histograms, graph_histograms, graph_embeddings)
         
         # Store intermediate outputs for potential use in regularization

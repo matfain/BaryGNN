@@ -162,7 +162,6 @@ scikit-learn==1.7.1
     # via barygnn (pyproject.toml)
 scipy==1.16.1
     # via
-    #   barygnn (pyproject.toml)
     #   scikit-learn
 sentry-sdk==2.33.2
     # via wandb

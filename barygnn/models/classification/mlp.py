@@ -13,7 +13,7 @@ class MLP(nn.Module):
         self,
         in_dim: int,
         hidden_dim: int,
-        out_dim: int,
+        out_dim: int = 2,
         num_layers: int = 2,
         dropout: float = 0.2,
     ):

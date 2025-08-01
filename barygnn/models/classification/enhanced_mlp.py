@@ -380,7 +380,14 @@ def create_classifier(
     """
     if classifier_type == "simple":
         from barygnn.models.classification.mlp import MLP
-        return MLP(**kwargs)
+        simple_kwargs = {
+            'in_dim': kwargs.get('in_dim'),
+            'hidden_dim': kwargs.get('hidden_dim'),
+            'out_dim': kwargs.get('out_dim'),
+            'num_layers': kwargs.get('num_layers', 2),
+            'dropout': kwargs.get('dropout', 0.2)
+        }
+        return MLP(**simple_kwargs)
     elif classifier_type == "enhanced":
         return EnhancedMLP(**kwargs)
     elif classifier_type == "adaptive":

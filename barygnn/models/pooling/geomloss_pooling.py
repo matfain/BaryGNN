@@ -78,66 +78,54 @@ class GeomLossBarycentricPooling(nn.Module):
             
         return histograms
     
+    @torch.no_grad()
     def _compute_ot_histogram(self, X: torch.Tensor) -> torch.Tensor:
         """
-        Compute the optimal transport histogram: how is mass from X
-        distributed across the codebook entries?
-        
-        This is the COLUMN SUMS of the optimal transport plan π.
+        Return the column-sums of the optimal transport plan between the
+        empirical distribution defined by X and the (learnable) codebook.
+
+        Args
+        ----
+        X : (n, hidden_dim) tensor of node samples for one graph.
+
+        Returns
+        -------
+        hist : (codebook_size,) OT histogram that sums to 1.
         """
-        n_samples = len(X)
-        K = self.codebook_size
-        
-        # Uniform source and target measures
-        a = torch.full((n_samples,), 1.0/n_samples, device=X.device, dtype=X.dtype)
-        b = torch.full((K,), 1.0/K, device=self.codebook.device, dtype=self.codebook.dtype)
-        
-        try:
-            # Get dual potentials from Sinkhorn
-            Fi, Gj = self.sinkhorn(a, X, b, self.codebook)
-            
-            # Reconstruct transport plan and get column sums
-            histogram = self._reconstruct_histogram_from_potentials(
-                Fi, Gj, X, a, b
-            )
-            
-            # Normalize (should already sum to 1, but numerical safety)
-            histogram = histogram / (histogram.sum() + 1e-8)
-            
-            # Debug check
-            if self.debug and torch.isnan(histogram).any():
-                logger.warning("NaN in histogram, using uniform fallback")
-                histogram = torch.full((K,), 1.0/K, device=histogram.device)
-                
-            return histogram
-            
-        except Exception as e:
-            if self.debug:
-                logger.error(f"OT computation failed: {e}")
-            # Fallback to uniform
-            return torch.full((K,), 1.0/K, device=X.device)
-    
-    def _reconstruct_histogram_from_potentials(self, Fi, Gj, X, a, b):
-        """
-        Reconstruct the column sums of optimal transport plan from dual potentials.
-        
-        π_{ij} = exp((Fi + Gj - C_{ij})/ε) * a_i * b_j
-        histogram_j = Σ_i π_{ij}
-        """
-        # Cost matrix (matching GeomLoss's cost function)
-        if self.p == 2:
-            C_ij = torch.cdist(X, self.codebook, p=2).pow(2)
-        else:
-            C_ij = torch.cdist(X, self.codebook, p=self.p).pow(self.p)
-        
-        # Compute transport plan entries in log space for numerical stability
+        n = X.size(0)             # number of samples
+        K = self.codebook_size     # shorthand
+
+        # Uniform source / target masses
+        a = torch.full((n,), 1.0 / n,  device=X.device, dtype=X.dtype)   # (n,)
+        b = torch.full((K,), 1.0 / K,  device=X.device, dtype=X.dtype)   # (K,)
+
+        # GeomLoss returns (1, n) and (1, K); squeeze to 1-D
+        Fi, Gj = self.sinkhorn(a, X, b, self.codebook)   # potentials
+        Fi, Gj = Fi.squeeze(0), Gj.squeeze(0)            # (n,), (K,)
+
+        # Cost matrix  ||x_i – c_j||_p^p  (broadcasted)
+        C_ij = torch.cdist(X, self.codebook, p=self.p).pow(self.p)  # (n, K)
+
+        # log-space transport plan: log π_ij = (Fi_i + Gj_j − C_ij) / ε + log a_i + log b_j
         log_pi = (Fi[:, None] + Gj[None, :] - C_ij) / self.epsilon
-        log_pi = log_pi + torch.log(a[:, None]) + torch.log(b[None, :])
-        
-        # Column sums using log-sum-exp for stability
-        histogram = torch.logsumexp(log_pi, dim=0).exp()
-        
-        return histogram
+        log_pi = log_pi + torch.log(a)[:, None] + torch.log(b)[None, :]
+
+        # Column sums: log-sum-exp over i
+        hist = torch.exp(torch.logsumexp(log_pi, dim=0))  # (K,)
+
+        # Normalise for safety
+        hist = hist / (hist.sum() + 1e-12)
+
+        if self.debug and torch.isnan(hist).any():
+            self._warn_and_fix_hist(hist)
+        return hist
+
+
+    # Optional helper for cleaner warnings / fallbacks
+    def _warn_and_fix_hist(self, hist: torch.Tensor):
+        logger.warning("NaN in histogram, falling back to uniform.")
+        hist.fill_(1.0 / self.codebook_size)
+            
     
     def get_transport_plan(self, X: torch.Tensor) -> torch.Tensor:
         """

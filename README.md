@@ -191,29 +191,27 @@ python examples/barygnn_config_training.py --config examples/barygnn_config.yaml
 - `adaptive`: Dynamically sized MLP
 - `deep_residual`: Deep residual MLP blocks
 
-## Architecture Overview
+**Readout Types:**
+- `weighted_mean`: Weighted mean of codebook atoms (recommended)
+- `concat`: Concatenates histogram weights with flattened codebook atoms
+- `combined`: Combines barycentric pooling with traditional graph pooling methods
 
-### Multi-Head Node Encoding
+### Combined Readout
 
-Each node is encoded into multiple vectors using either:
-- **Efficient Multi-Head**: Shared GNN backbone with multiple projection heads
-- **Full Multi-Head**: Separate GNN encoders for each distribution vector
+The new `combined` readout type allows you to combine the power of barycentric pooling with traditional graph pooling methods:
 
-```python
-# Multi-head encoding produces node distributions
-node_distributions = multi_head_encoder(x, edge_index)  # [num_nodes, 32, hidden_dim]
+```yaml
+model:
+  readout_type: "combined"
+  combined_readout: "global_add_pool"  # Options: global_add_pool, global_mean_pool, global_max_pool
+  barycentric_readout: "weighted_mean"  # Options: weighted_mean, concat
 ```
 
-### Barycentric Pooling with GeomLoss
+This creates graph embeddings by concatenating:
+1. **Barycentric embedding**: Computed using optimal transport
+2. **Traditional embedding**: Computed using standard graph pooling on the node distributions
 
-Graph-level embeddings are computed as 2-Wasserstein barycenters using the robust GeomLoss library:
-
-```python
-# GeomLoss-based Sinkhorn algorithm
-barycenter_weights = geomloss_pooling(node_distributions, batch_idx)  # [batch_size, codebook_size]
-```
-
-The barycenter weights represent how much each codebook atom contributes to the graph representation.
+The resulting embedding has dimension `hidden_dim * 2` (barycentric + traditional).
 
 ### Readout and Classification
 
@@ -221,8 +219,13 @@ The barycenter weights represent how much each codebook atom contributes to the 
 # Create final graph embedding
 if readout_type == "weighted_mean":
     graph_embedding = torch.sum(barycenter_weights.unsqueeze(-1) * codebook, dim=1)
-else:  # "concat"
-    graph_embedding = (barycenter_weights.unsqueeze(-1) * codebook).flatten(start_dim=1)
+elif readout_type == "concat":
+    # Concatenate histogram weights with flattened codebook atoms
+    flattened_codebook = codebook.flatten()
+    graph_embedding = torch.cat([barycenter_weights, flattened_codebook.expand(batch_size, -1)], dim=1)
+else:  # "combined"
+    # Combine barycentric and traditional pooling
+    graph_embedding = torch.cat([barycentric_emb, traditional_emb], dim=1)
 
 # Classification
 logits = classifier(graph_embedding)

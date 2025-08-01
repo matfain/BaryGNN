@@ -18,13 +18,13 @@ model:
     distribution_size: 32  # Number of vectors per node
   
   pooling:
-    backend: "geomloss"      # GeomLoss implementation
-    codebook_size: 32  # Each atom has dimension model.hidden_dim
-    epsilon: 0.3
-    scaling: 0.9             # optional; default .9 is usually fine
-    max_iter: 100
-    tol: 1e-6
-    p: 2
+    backend: "geomloss"  # GeomLoss implementation
+    codebook_size: 16
+    epsilon: 0.2
+    epsilon_node: 0.3    # Stage 1 epsilon for hierarchical pooling
+    epsilon_graph: 0.1   # Stage 2 epsilon for hierarchical pooling
+    p: 2  # Order of Wasserstein distance
+    scaling: 0.9  # Only used for GeomLoss
   
   classification:
     type: "enhanced"  # "simple", "enhanced", "adaptive", "deep_residual"
