@@ -26,7 +26,7 @@ class EncoderConfig:
 class PoolingConfig:
     """Enhanced configuration for the barycentric pooling."""
     
-    backend: str = "pot"  # "pot", "geomloss", or "hierarchical"
+    backend: str = "geomloss"  # "geomloss" or "hierarchical"
     codebook_size: int = 16
     epsilon: float = 0.2
     epsilon_node: float = 0.3    # Stage 1 epsilon for hierarchical pooling

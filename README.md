@@ -6,7 +6,7 @@ BaryGNN is a novel Graph Neural Network (GNN) pooling method that represents eac
 
 ### 🚀 **BaryGNN Key Features**
 - **Multi-Head Node Encoders**: True node distribution representation using multiple GNN heads instead of naive linear projection
-- **POT Integration**: Robust optimal transport algorithms using the Python Optimal Transport (POT) library
+- **GeomLoss Integration**: Robust optimal transport algorithms using the GeomLoss library
 - **Enhanced Classifiers**: Advanced MLP architectures with residual connections, multiple activation functions, and adaptive sizing
 - **Distribution Regularization**: Learnable regularization to ensure meaningful node distributions
 - **Comprehensive Configuration**: Flexible configuration system supporting all new features
@@ -54,7 +54,7 @@ To set up the development environment on a new machine:
 
 **Dependencies include:**
 - PyTorch & PyTorch Geometric for GNN implementation
-- POT (Python Optimal Transport) for optimal transport computations
+- GeomLoss for optimal transport computations
 - Weights & Biases for experiment tracking
 - Standard scientific computing libraries (NumPy, SciPy, scikit-learn)
 
@@ -83,7 +83,8 @@ BaryGNN/
 │   │   │
 │   │   ├── pooling/          # Pooling methods
 │   │   │   ├── __init__.py
-│   │   │   └── pot_pooling.py         # POT-based pooling ⭐
+│   │   │   ├── geomloss_pooling.py    # GeomLoss-based pooling ⭐
+│   │   │   └── hier_sinkhorn.py       # Hierarchical pooling ⭐
 │   │   │
 │   │   ├── readout/          # Readout methods
 │   │   │   ├── __init__.py
@@ -179,7 +180,7 @@ python examples/barygnn_config_training.py --config examples/barygnn_config.yaml
 - `efficient`: Shared GNN backbone with projection heads (recommended)
 - `full`: Separate GNN for each head (more parameters)
 
-**POT Pooling:**
+**GeomLoss Pooling:**
 - `epsilon`: Regularization parameter for Sinkhorn algorithm
 - `max_iter`: Maximum iterations for convergence
 - `tol`: Convergence tolerance
@@ -203,13 +204,13 @@ Each node is encoded into multiple vectors using either:
 node_distributions = multi_head_encoder(x, edge_index)  # [num_nodes, 32, hidden_dim]
 ```
 
-### Barycentric Pooling with POT
+### Barycentric Pooling with GeomLoss
 
-Graph-level embeddings are computed as 2-Wasserstein barycenters using the robust POT library:
+Graph-level embeddings are computed as 2-Wasserstein barycenters using the robust GeomLoss library:
 
 ```python
-# POT-based Sinkhorn algorithm
-barycenter_weights = pot_pooling(node_distributions, batch_idx)  # [batch_size, codebook_size]
+# GeomLoss-based Sinkhorn algorithm
+barycenter_weights = geomloss_pooling(node_distributions, batch_idx)  # [batch_size, codebook_size]
 ```
 
 The barycenter weights represent how much each codebook atom contributes to the graph representation.
@@ -235,7 +236,7 @@ BaryGNN includes comprehensive W&B logging:
 wandb:
   enabled: true
   project: "BaryGNN"
-  tags: ["multi-head", "pot", "enhanced"]
+  tags: ["multi-head", "geomloss", "enhanced"]
   log_gradients: true
   log_parameters: true
   watch_model: true
@@ -243,7 +244,7 @@ wandb:
 
 ## Performance Tips
 
-1. **Use POT**: More stable and robust than custom implementations
+1. **Use GeomLoss**: More stable and robust than custom implementations
 2. **Start with "efficient" multi-head**: Better dimension consistency
 3. **Use enhanced classifiers**: Better performance with residual connections
 4. **Enable distribution regularization**: Helps learn meaningful distributions
@@ -269,10 +270,10 @@ model:
     multi_head_type: "efficient"  # Preferred for dimension consistency
 ```
 
-### POT Convergence Issues
+### GeomLoss Convergence Issues
 
-If you see warnings about "Weights sum too small":
-- This is normal behavior when POT's Sinkhorn algorithm produces very small weights
+If you see warnings about convergence:
+- This is normal behavior when GeomLoss's Sinkhorn algorithm produces very small weights
 - The system automatically falls back to uniform weights
 - Consider adjusting `epsilon` (typically 0.1-0.5) or `max_iter` if issues persist
 

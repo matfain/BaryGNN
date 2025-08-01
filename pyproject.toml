@@ -15,7 +15,6 @@ dependencies = [
     "matplotlib",
     "wandb",
     "scikit-learn",
-    "pot",
     "geomloss==0.2.6",
     "pykeops==2.3",         
     "keopscore==2.3"

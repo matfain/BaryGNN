@@ -8,7 +8,7 @@ model:
   debug_mode: true
   
   encoder:
-    type: "GraphSAGE"               # "GIN" or "GraphSAGE"
+    type: "GIN"               # "GIN" or "GraphSAGE"
     in_dim: 0                       # Will be set based on dataset
     num_layers: 10
     dropout: 0.3

@@ -51,7 +51,7 @@ class GIN(BaseEncoder):
             )
             
             # GIN convolution layer
-            self.convs.append(GINConv(mlp, train_eps=True))
+            self.convs.append(GINConv(mlp, train_eps=False))
             self.batch_norms.append(nn.BatchNorm1d(hidden_dim))
     
     def forward(self, x, edge_index, edge_attr=None):

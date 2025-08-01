@@ -27,3 +27,4 @@ wandb/
 logs/
 data/
 checkpoints/
+sandbox/

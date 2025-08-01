@@ -75,7 +75,6 @@ numpy==2.3.2
     #   geomloss
     #   matplotlib
     #   pandas
-    #   pot
     #   pykeops
     #   scikit-learn
     #   scipy
@@ -127,8 +126,6 @@ pillow==11.3.0
     # via matplotlib
 platformdirs==4.3.8
     # via wandb
-pot==0.9.5
-    # via barygnn (pyproject.toml)
 propcache==0.3.2
     # via
     #   aiohttp
@@ -166,7 +163,6 @@ scikit-learn==1.7.1
 scipy==1.16.1
     # via
     #   barygnn (pyproject.toml)
-    #   pot
     #   scikit-learn
 sentry-sdk==2.33.2
     # via wandb

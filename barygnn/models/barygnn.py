@@ -81,9 +81,9 @@ class BaryGNN(nn.Module):
             encoder_dropout: Dropout rate for encoder
             multi_head_type: Multi-head architecture type ("full" or "efficient")
             shared_layers: Number of shared layers in multi-head encoder
-            sinkhorn_epsilon: Regularization parameter for Sinkhorn/POT
-            max_iter: Maximum iterations for POT Sinkhorn
-            tol: Convergence tolerance for POT
+            sinkhorn_epsilon: Regularization parameter for Sinkhorn optimal transport
+            max_iter: Maximum iterations for Sinkhorn algorithm
+            tol: Convergence tolerance for Sinkhorn
             classifier_type: Type of classifier
             classifier_hidden_dims: Hidden dimensions for classifier
             classifier_dropout: Dropout rate for classifier
@@ -109,7 +109,7 @@ class BaryGNN(nn.Module):
         logger.info(f"Initializing BaryGNN with:")
         logger.info(f"  Architecture: {in_dim} -> {hidden_dim} -> {codebook_size} atoms -> {num_classes}")
         logger.info(f"  Encoder: {encoder_type} ({multi_head_type} multi-head, {distribution_size} heads)")
-        logger.info(f"  Pooling: POT (ε={sinkhorn_epsilon})")
+        logger.info(f"  Pooling: GeomLoss (ε={sinkhorn_epsilon})")
         logger.info(f"  Classifier: {classifier_type}")
         logger.info(f"  Regularization: {reg_type if use_distribution_reg else 'None'} (λ={reg_lambda})")
         
@@ -125,7 +125,7 @@ class BaryGNN(nn.Module):
             dropout=encoder_dropout
         )
         
-        # POT barycentric pooling with learned codebook
+        # GeomLoss barycentric pooling with learned codebook
         pooling_kwargs = {
             'hidden_dim': hidden_dim,
             'codebook_size': codebook_size,

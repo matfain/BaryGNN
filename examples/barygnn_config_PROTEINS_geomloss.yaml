@@ -20,7 +20,7 @@ model:
     projection_width_factor: 4.0    # Max width multiplier for hourglass MLP
   
   pooling:
-    backend: "geomloss"             # "pot" to keep current NumPy implementation
+    backend: "geomloss"             # GeomLoss implementation
     codebook_size: 64               # Each atom has dimension model.hidden_dim
     epsilon: 0.3
     scaling: 0.9                    # optional; default .9 is usually fine

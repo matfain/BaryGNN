@@ -18,7 +18,7 @@ model:
     distribution_size: 32  # Number of vectors per node
   
   pooling:
-    backend: "geomloss"      # "pot" to keep current NumPy implementation
+    backend: "geomloss"      # GeomLoss implementation
     codebook_size: 32  # Each atom has dimension model.hidden_dim
     epsilon: 0.3
     scaling: 0.9             # optional; default .9 is usually fine
