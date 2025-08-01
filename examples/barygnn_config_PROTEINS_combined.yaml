@@ -43,8 +43,8 @@ model:
     num_layers: 2                   # For simple
   
   regularization:
-    enabled: false
-    type: "centroid"                # "variance", "centroid", "coherence"
+    enabled: true
+    type: "variance"                # "variance", "centroid", "coherence"
     lambda_reg: 0.2
 
 data:
@@ -59,7 +59,7 @@ data:
 
 training:
   num_epochs: 200
-  lr: 0.01
+  lr: 0.05
   weight_decay: 0.0005
   patience: 50
   metric: "accuracy"
@@ -71,7 +71,7 @@ training:
   scheduler_params:
     mode: "max"           # monitor accuracy
     factor: 0.5
-    patience: 10
+    patience: 5
     cooldown: 5           # optional but helpful
     min_lr: 0.0001   
 
