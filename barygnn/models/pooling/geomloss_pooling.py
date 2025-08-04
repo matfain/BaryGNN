@@ -78,7 +78,7 @@ class GeomLossBarycentricPooling(nn.Module):
             
         return histograms
     
-    @torch.no_grad()
+    # @torch.no_grad()
     def _compute_ot_histogram(self, X: torch.Tensor) -> torch.Tensor:
         """
         Return the column-sums of the optimal transport plan between the
@@ -155,3 +155,32 @@ class GeomLossBarycentricPooling(nn.Module):
         transport_plan = log_pi.exp()
         
         return transport_plan
+
+    # Pooling Layer gradient debugging hooks
+    def register_gradient_hooks(self):
+        """
+        Register gradient hooks on the codebook to track gradient flow.
+        Call this method after model initialization.
+        """
+        def hook_fn(grad):
+            with torch.no_grad():
+                grad_norm = grad.norm().item()
+                has_nan = torch.isnan(grad).any().item()
+                if has_nan:
+                    logger.warning("NaN gradients detected in codebook!")
+                else:
+                    logger.info(f"Codebook gradient norm: {grad_norm:.6f}")
+                    logger.info(f"Codebook grad min/max: {grad.min().item():.6f}/{grad.max().item():.6f}")
+            return grad
+        
+        # Register hook on codebook
+        self.hook_handle = self.codebook.register_hook(hook_fn)
+        logger.info("Gradient hook registered on codebook")
+        
+        return self.hook_handle  # Return handle so it can be removed later if needed
+
+    def remove_gradient_hooks(self):
+        """Remove gradient hooks to stop tracking."""
+        if hasattr(self, 'hook_handle'):
+            self.hook_handle.remove()
+            logger.info("Gradient hook removed from codebook")

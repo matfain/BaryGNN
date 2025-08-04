@@ -1,4 +1,4 @@
-experiment_name: "barygnn-MUTAG-combined-readout"
+experiment_type: "barygnn-PROTEINS-combined-readout"
 seed: 42
 
 model:
@@ -22,7 +22,7 @@ model:
     projection_width_factor: 4.0    # Max width multiplier for hourglass MLP
 
   pooling:
-    backend: "hierarchical"
+    backend: "geomloss"
     codebook_size: 64
     epsilon: 0.2
     p: 2
@@ -48,8 +48,8 @@ model:
     lambda_reg: 0.2
 
 data:
-  name: "MUTAG"
-  batch_size: 32
+  name: "PROTEINS"
+  batch_size: 64
   num_workers: 4
   split_seed: 42
   val_ratio: 0.1
@@ -59,7 +59,7 @@ data:
 
 training:
   num_epochs: 200
-  lr: 0.01
+  lr: 0.05
   weight_decay: 0.0005
   patience: 50
   metric: "accuracy"
@@ -71,7 +71,7 @@ training:
   scheduler_params:
     mode: "max"           # monitor accuracy
     factor: 0.5
-    patience: 10
+    patience: 5
     cooldown: 5           # optional but helpful
     min_lr: 0.0001   
 

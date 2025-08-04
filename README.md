@@ -133,7 +133,7 @@ The easiest way to train BaryGNN is using the configuration system:
 1. **Create or modify a configuration file** (see `examples/barygnn_config.yaml`):
 
 ```yaml
-experiment_name: "my_barygnn_experiment"
+experiment_type: "my_barygnn_experiment"
 seed: 42
 
 model:

@@ -1,43 +1,17 @@
-#!/usr/bin/env python3
-"""
-BaryGNN Configuration-Based Training Script
-
-This script demonstrates how to use the Config system to train BaryGNN
-with all the enhanced features.
-"""
-
-import sys
 import os
 import logging
-import argparse
 import torch
 import torch.nn.functional as F
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 import wandb
-import numpy as np
+import argparse
 
-# Add the project root to the path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-
-from barygnn.models import create_barygnn
-from barygnn.config import Config
-from barygnn.data import load_dataset
-from barygnn.utils import compute_metrics
-
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler('logs/barygnn_config.log')
-    ]
-)
-
-logger = logging.getLogger(__name__)
+from barygnn import create_barygnn, Config, load_dataset, evaluate_model
 
 def train_epoch(model, train_loader, optimizer, device, clip_grad_norm=None):
+    logger = logging.getLogger(__name__)
+    
     """Train the model for one epoch."""
     model.train()
     total_loss = 0
@@ -93,81 +67,22 @@ def train_epoch(model, train_loader, optimizer, device, clip_grad_norm=None):
     
     return avg_loss, avg_classification_loss, avg_regularization_loss, accuracy
 
-def evaluate(model, loader, device):
-    """Evaluate the model."""
-    model.eval()
-    all_preds = []
-    all_labels = []
-    all_logits = []
-    total_loss = 0
-    
-    with torch.no_grad():
-        for batch in loader:
-            batch = batch.to(device)
-            
-            try:
-                logits = model(batch)
-                loss = F.cross_entropy(logits, batch.y)
-                total_loss += loss.item()
-                
-                pred = logits.argmax(dim=1)
-                all_preds.extend(pred.cpu().numpy())
-                all_labels.extend(batch.y.cpu().numpy())
-                all_logits.extend(F.softmax(logits, dim=1).cpu().numpy())
-                
-            except Exception as e:
-                logger.error(f"Error in evaluation batch: {str(e)}")
-                continue
-    
-    if len(all_preds) == 0:
-        return 0, {"accuracy": 0, "macro_f1": 0, "roc_auc": 0}
-    
-    avg_loss = total_loss / len(loader)
-    
-    # Convert logits to numpy array for metrics computation
-    all_logits = np.array(all_logits)
-    metrics = compute_metrics(all_labels, all_preds, all_logits)
-    
-    return avg_loss, metrics
 
-def main(args=None):
-    """Main training function."""
-    if args is None:
-        import argparse
-        parser = argparse.ArgumentParser(description='BaryGNN v2 Configuration-Based Training')
-        parser.add_argument('--config', type=str, default='examples/barygnn_v2_config.yaml',
-                           help='Path to configuration file')
-        parser.add_argument('--logdir', type=str, default='logs',
-                           help='Directory to save logs')
-        args = parser.parse_args()
-
-    # Create logs directory
-    os.makedirs(args.logdir, exist_ok=True)
-
-    # Set up logging
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.StreamHandler(),
-            logging.FileHandler(os.path.join(args.logdir, 'barygnn_config.log'))
-        ],
-        force=True  # Ensures our handlers are always used
-    )
+def run_training(config: Config) -> None:
     logger = logging.getLogger(__name__)
     
     # Load configuration
     logger.info(f"Loading configuration from {args.config}")
     config = Config.from_yaml(args.config)
     
-    logger.info(f"Starting BaryGNN training: {config.experiment_name}")
+    logger.info(f"Starting BaryGNN training: {config.experiment_type}")
     
     # Initialize Weights & Biases
     if config.wandb.enabled and config.wandb.api_key:
         os.environ['WANDB_API_KEY'] = config.wandb.api_key
         wandb.init(
             project=config.wandb.project,
-            name=config.experiment_name,
+            name=config.experiment_type,
             config=config.to_dict(),
             tags=config.wandb.tags,
             notes=config.wandb.notes,
@@ -202,6 +117,8 @@ def main(args=None):
     model_kwargs['num_classes'] = num_classes
     
     model = create_barygnn(version=config.model.version, **model_kwargs).to(device)
+    # gradient debugging: register hooks if needed
+    model.pooling.register_gradient_hooks()
     
     # Log model information
     if hasattr(model, 'get_model_info'):
@@ -247,7 +164,7 @@ def main(args=None):
         )
         
         # Validation
-        val_loss, val_metrics = evaluate(model, val_loader, device)
+        val_loss, val_metrics = evaluate_model(model, val_loader, device)
         val_accuracy = val_metrics['accuracy']
         
         # Learning rate scheduling
@@ -295,7 +212,7 @@ def main(args=None):
                 'optimizer_state_dict': optimizer.state_dict(),
                 'best_val_accuracy': best_val_accuracy,
                 'config': config.to_dict(),
-            }, f'checkpoints/{config.experiment_name}_best.pt')
+            }, f'checkpoints/{config.experiment_type}_best.pt')
             
             logger.info(f"New best model saved with validation accuracy: {best_val_accuracy:.4f}")
         else:
@@ -307,14 +224,14 @@ def main(args=None):
             break
     
     # Load best model for final evaluation
-    checkpoint_path = f'checkpoints/{config.experiment_name}_best.pt'
+    checkpoint_path = f'checkpoints/{config.experiment_type}_best.pt'
     if os.path.exists(checkpoint_path):
         checkpoint = torch.load(checkpoint_path)
         model.load_state_dict(checkpoint['model_state_dict'])
         logger.info("Loaded best model for final evaluation")
     
     # Final evaluation on test set
-    test_loss, test_metrics = evaluate(model, test_loader, device)
+    test_loss, test_metrics = evaluate_model(model, test_loader, device)
     
     logger.info("=== Final Results ===")
     logger.info(f"Best Validation Accuracy: {best_val_accuracy:.4f}")
@@ -335,18 +252,15 @@ def main(args=None):
         wandb.finish()
     
     logger.info("Training completed successfully!")
-
+    
 if __name__ == "__main__":
-    import argparse
     parser = argparse.ArgumentParser(description='BaryGNN v2 Configuration-Based Training')
-    parser.add_argument('--config', type=str, default='examples/barygnn_v2_config.yaml',
-                       help='Path to configuration file')
-    parser.add_argument('--logdir', type=str, default='logs',
-                       help='Directory to save logs')
+    parser.add_argument('--config', type=str, help='Path to configuration file')
+    parser.add_argument('--log_dir', type=str, help='Directory to save logs')
     args = parser.parse_args()
-
+    
     # Create logs directory
-    os.makedirs(args.logdir, exist_ok=True)
+    os.makedirs(args.log_dir, exist_ok=True)
 
     # Set up logging
     logging.basicConfig(
@@ -354,12 +268,9 @@ if __name__ == "__main__":
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         handlers=[
             logging.StreamHandler(),
-            logging.FileHandler(os.path.join(args.logdir, 'barygnn_config.log'))
+            logging.FileHandler(os.path.join(args.log_dir, 'logger.log'), mode='w')
         ],
         force=True  # Ensures our handlers are always used
     )
-    logger = logging.getLogger(__name__)
-
-    # Pass args.config and args.logdir to main
-    main_args = argparse.Namespace(config=args.config, logdir=args.logdir)
-    main(main_args) 
+    
+    run_training(args.config)

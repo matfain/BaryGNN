@@ -1,4 +1,4 @@
-experiment_name: "barygnn-MUTAG-hierarchical"
+experiment_type: "barygnn-MUTAG-hierarchical"
 seed: 42
 
 model:

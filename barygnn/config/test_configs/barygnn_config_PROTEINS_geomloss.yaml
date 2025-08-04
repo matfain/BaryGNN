@@ -1,38 +1,36 @@
-experiment_name: "barygnn-PROTEINS-combined-readout"
+experiment_type: "barygnn-PROTEINS"
 seed: 42
 
 model:
   version: "v2"
-  hidden_dim: 64                   # Unified dimension for encoder output AND codebook atoms
-  readout_type: "combined"          # New combined readout type
-  combined_readout: "global_add_pool"  # Traditional pooling method to combine with
-  barycentric_readout: "weighted_mean"  # Barycentric readout method: "weighted_mean" or "concat"
+  hidden_dim: 128                   # Unified dimension for encoder output AND codebook atoms
+  readout_type: "weighted_mean"     # "weighted_mean" or "concat"
   debug_mode: true
   
   encoder:
-    type: "GIN"               # "GIN" or "GraphSAGE"
+    type: "GraphSAGE"               # "GIN" or "GraphSAGE"
     in_dim: 0                       # Will be set based on dataset
-    num_layers: 5
+    num_layers: 10
     dropout: 0.3
     aggr: "sum"                     # For GraphSAGE
-    multi_head_type: "efficient"    # "full" or "efficient"
+    multi_head_type: "full"         # "full" or "efficient"
     shared_layers: 2                # relevant only for full multi-head encoder
     distribution_size: 16           # Number of vectors per node
     projection_depth: 4             # Number of layers in each projection head (hourglass MLP)
     projection_width_factor: 4.0    # Max width multiplier for hourglass MLP
-
+  
   pooling:
-    backend: "geomloss"
-    codebook_size: 64
+    backend: "geomloss"  # GeomLoss implementation
+    codebook_size: 32
     epsilon: 0.2
     p: 2
   
   classification:
-    type: "simple"                # "simple", "enhanced", "adaptive", "deep_residual"
+    type: "enhanced"                # "simple", "enhanced", "adaptive", "deep_residual"
     dropout: 0.2
     activation: "relu"              # "relu", "leaky_relu", "gelu", "swish"
     norm_type: "batch"              # "batch", "layer", null
-    hidden_dims: [256, 128, 64]    # Will be adjusted for combined readout
+    hidden_dims: [256, 128, 64]
     use_residual: true
     residual_type: "add"            # "add", "concat"
     final_dropout: 0.3
@@ -44,7 +42,7 @@ model:
   
   regularization:
     enabled: true
-    type: "variance"                # "variance", "centroid", "coherence"
+    type: "centroid"                # "variance", "centroid", "coherence"
     lambda_reg: 0.2
 
 data:
@@ -58,10 +56,10 @@ data:
   add_self_loops: true
 
 training:
-  num_epochs: 200
+  num_epochs: 300
   lr: 0.05
   weight_decay: 0.0005
-  patience: 50
+  patience: 100
   metric: "accuracy"
   device: "cuda"
   gradient_clip: 1.0
@@ -71,17 +69,18 @@ training:
   scheduler_params:
     mode: "max"           # monitor accuracy
     factor: 0.5
-    patience: 5
+    patience: 10
     cooldown: 5           # optional but helpful
     min_lr: 0.0001   
+
 
 wandb:
   enabled: true
   project: "BaryGNN"
   entity: null
-  api_key: 1cf1eb10b27e2214f8d38aa573fdacb7af0ed6c2
-  tags: ["combined-readout", "geomloss", "enhanced"]
-  notes: "Testing combined readout: barycentric + global_add_pool"
+  api_key: 1cf1eb10b27e2214f8d38aa573fdacb7af0ed6c2  # Set via environment variable
+  tags: []
+  notes: null
   save_code: true
   log_gradients: false
   log_parameters: true

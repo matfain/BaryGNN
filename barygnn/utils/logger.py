@@ -11,7 +11,7 @@ class Logger:
     
     def __init__(
         self,
-        experiment_name: str,
+        experiment_type: str,
         config: Dict[str, Any],
         wandb_config: Dict[str, Any],
         log_dir: str = "logs",
@@ -20,12 +20,12 @@ class Logger:
         Initialize the logger.
         
         Args:
-            experiment_name: Name of the experiment
+            experiment_type: Name of the experiment
             config: Configuration dictionary
             wandb_config: Weights & Biases configuration
             log_dir: Directory for log files
         """
-        self.experiment_name = experiment_name
+        self.experiment_type = experiment_type
         self.config = config
         self.wandb_config = wandb_config
         self.log_dir = log_dir
@@ -34,11 +34,11 @@ class Logger:
         os.makedirs(log_dir, exist_ok=True)
         
         # Set up file logger
-        self.logger = logging.getLogger(experiment_name)
+        self.logger = logging.getLogger(experiment_type)
         self.logger.setLevel(logging.INFO)
         
         # Create file handler
-        file_handler = logging.FileHandler(os.path.join(log_dir, f"{experiment_name}.log"))
+        file_handler = logging.FileHandler(os.path.join(log_dir, f"{experiment_type}.log"))
         file_handler.setLevel(logging.INFO)
         
         # Create console handler
@@ -66,7 +66,7 @@ class Logger:
             wandb.init(
                 project=wandb_config.get("project", "BaryGNN"),
                 entity=wandb_config.get("entity"),
-                name=experiment_name,
+                name=experiment_type,
                 config=config,
             )
     

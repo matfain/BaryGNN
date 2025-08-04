@@ -8,6 +8,7 @@ from barygnn.config.config import (
     DataConfig,
     TrainingConfig,
     WandbConfig,
+    generate_configs
 )
 
 __all__ = [
@@ -20,4 +21,5 @@ __all__ = [
     "DataConfig",
     "TrainingConfig",
     "WandbConfig",
+    "generate_configs"
 ]

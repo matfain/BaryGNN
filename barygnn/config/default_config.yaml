@@ -1,5 +1,6 @@
-experiment_name: "barygnn-v2-default"
+experiment_type: "barygnn"
 seed: 42
+partition: 
 
 model:
   version: "v2"
@@ -83,3 +84,10 @@ wandb:
   log_gradients: false
   log_parameters: true
   watch_model: true 
+
+slurm:
+    experiment_type: "barygnn-default"
+    partition: "studentkillable"
+    mem: "8G"
+    timelimit: "10:00:00"
+    gpu: 1

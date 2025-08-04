@@ -1,0 +1,84 @@
+data:
+  add_self_loops: true
+  batch_size: 32
+  name: MUTAG
+  normalize_features: true
+  num_workers: 4
+  split_seed: 42
+  test_ratio: 0.1
+  val_ratio: 0.1
+experiment_type: barygnn_readout_type=combined_codebook_size=64_epsilon=0.2_type=GIN
+model:
+  barycentric_readout: weighted_mean
+  classification:
+    activation: relu
+    depth_factor: 1.0
+    dropout: 0.2
+    final_dropout: 0.3
+    hidden_dim: 256
+    hidden_dims:
+    - 256
+    - 128
+    - 64
+    norm_type: batch
+    num_blocks: 3
+    num_layers: 2
+    residual_type: add
+    type: enhanced
+    use_residual: true
+    width_factor: 1.0
+  combined_readout: global_add_pool
+  debug_mode: true
+  encoder:
+    aggr: sum
+    distribution_size: 32
+    dropout: 0.3
+    in_dim: 0
+    multi_head_type: efficient
+    num_layers: 3
+    projection_depth: 2
+    projection_width_factor: 1.0
+    shared_layers: 1
+    type: GIN
+  hidden_dim: 64
+  pooling:
+    backend: geomloss
+    codebook_size: 64
+    epsilon: 0.2
+    epsilon_graph: 0.1
+    epsilon_node: 0.3
+    p: 2
+    scaling: 0.9
+  readout_type: combined
+  regularization:
+    enabled: true
+    lambda_reg: 0.01
+    type: variance
+  version: v2
+seed: 42
+training:
+  class_weights: null
+  device: cuda
+  focal_alpha: 1.0
+  focal_gamma: 2.0
+  focal_loss: false
+  gradient_clip: 1.0
+  lr: 0.0001
+  metric: accuracy
+  num_epochs: 300
+  patience: 60
+  scheduler: null
+  scheduler_params: {}
+  warmup_epochs: 0
+  weight_decay: 0.0005
+wandb:
+  api_key: 1cf1eb10b27e2214f8d38aa573fdacb7af0ed6c2
+  enabled: true
+  entity: null
+  log_gradients: false
+  log_parameters: true
+  notes: null
+  project: BaryGNN
+  save_code: true
+  tags: []
+  watch_model: true

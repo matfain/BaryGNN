@@ -3,6 +3,71 @@ import yaml
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Union, Any, Literal
 
+from pathlib import Path
+import itertools
+from copy import deepcopy
+import logging
+
+
+# Set up logging
+logger = logging.getLogger(__name__)
+
+def generate_configs(base_config_path, param_grid, output_dir):
+    """
+    Generate configuration files for grid search.
+    
+    Args:
+        base_config_path: Path to base configuration file
+        param_grid: Dictionary of parameter grids
+        output_dir: Output directory for configuration files
+        
+    Returns:
+        config_paths: List of paths to generated configuration files
+    """
+    # Load base configuration
+    base_config = Config.from_yaml(base_config_path)
+    
+    # Create output directory
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Generate parameter combinations
+    param_names = list(param_grid.keys())
+    param_values = list(param_grid.values())
+    param_combinations = list(itertools.product(*param_values))
+    
+    # Generate configuration files
+    config_paths = []
+    
+    for i, params in enumerate(param_combinations):
+        # Create a copy of the base configuration
+        config = deepcopy(base_config)
+        
+        # Set parameters
+        for name, value in zip(param_names, params):
+            # Handle nested parameters
+            if "." in name:
+                parts = name.split(".")
+                obj = config
+                for part in parts[:-1]:
+                    obj = getattr(obj, part)
+                setattr(obj, parts[-1], value)
+            else:
+                setattr(config, name, value)
+                
+        
+        # Set experiment name
+        param_str = "_".join([f"{name.split('.')[-1]}={value}" for name, value in zip(param_names, params)])
+        config.experiment_type = f"{base_config.experiment_type}_{param_str}"
+        
+        # Save configuration
+        config_path = output_dir / f"{config.experiment_type}.yaml"
+        config.to_yaml(config_path)
+        config_paths.append(config_path)
+    
+    return config_paths
+
+
 
 @dataclass
 class EncoderConfig:
@@ -147,18 +212,25 @@ class WandbConfig:
     log_parameters: bool = True
     watch_model: bool = True
 
+@dataclass
+class SlurmConfig:
+    partition: str = "studentkillable"
+    mem: str = "8G"
+    timelimit: str = "10:00:00"
+    gpu: int = 1
 
 @dataclass
 class Config:
     """Enhanced main configuration for BaryGNN."""
     
-    experiment_name: str = "barygnn-default"
+    experiment_type: str = "barygnn"
     seed: int = 42
     
     model: ModelConfig = field(default_factory=ModelConfig)
     data: DataConfig = field(default_factory=DataConfig)
     training: TrainingConfig = field(default_factory=TrainingConfig)
     wandb: WandbConfig = field(default_factory=WandbConfig)
+    slurm: SlurmConfig = field(default_factory=SlurmConfig)
     
     @classmethod
     def from_yaml(cls, path: str) -> "Config":
@@ -243,14 +315,23 @@ class Config:
                 log_parameters=wandb_dict.get("log_parameters", True),
                 watch_model=wandb_dict.get("watch_model", True),
             )
+            
+        def convert_slurm(slurm_dict):
+            return SlurmConfig(
+                partition=slurm_dict.get("partition", "studentkillable"),
+                mem=slurm_dict.get("mem", "8G"),
+                timelimit=slurm_dict.get("timelimit", "10:00:00"),
+                gpu=slurm_dict.get("gpu", 1),
+            )
 
         return cls(
-            experiment_name=config_dict.get("experiment_name", "barygnn-default"),
+            experiment_type=config_dict.get("experiment_type", "barygnn"),
             seed=config_dict.get("seed", 42),
             model=convert_model(config_dict.get("model", {})),
             data=convert_data(config_dict.get("data", {})),
             training=convert_training(config_dict.get("training", {})),
             wandb=convert_wandb(config_dict.get("wandb", {})),
+            slurm=convert_slurm(config_dict.get("slurm", {})),
         )
     
     def to_yaml(self, path: str) -> None:
@@ -263,7 +344,7 @@ class Config:
     def to_dict(self) -> Dict[str, Any]:
         """Convert configuration to a dictionary."""
         return {
-            "experiment_name": self.experiment_name,
+            "experiment_type": self.experiment_type,
             "seed": self.seed,
             "model": {
                 "version": self.model.version,
@@ -407,3 +488,4 @@ class Config:
             # General parameters
             'debug_mode': self.model.debug_mode,
         } 
+        

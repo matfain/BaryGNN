@@ -1,4 +1,4 @@
-experiment_name: "barygnn-PROTEINS-hierarchical"
+experiment_type: "barygnn-PROTEINS-hierarchical"
 seed: 42
 
 model:
