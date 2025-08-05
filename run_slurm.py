@@ -163,13 +163,14 @@ def main():
     
     # Define parameter grid
     param_grid = {
-        "model.hidden_dim": [32, 64, 128],
+        "model.hidden_dim": [32, 64],
         "model.encoder.num_layers": [3, 5, 8, 12],
         "model.pooling.backend": ["barycenter"],
         "model.pooling.readout_type": ["weighted_mean"],
-        "model.pooling.standard_pooling_method": ["global_mean_pool", "global_max_pool", "global_sum_pool"],
+        "model.pooling.standard_pooling_method": ["global_mean_pool", "global_max_pool", "global_add_pool"],
         "model.pooling.codebook_size": [32, 64],
-        "model.pooling.epsilon": [0.05, 0.1, 0.5],
+        "model.pooling.epsilon": [0.05, 0.1, 0.2],
+        "training.patience": [20, 40, 60],
     }
     
     timestamp = datetime.now().strftime("%d-%m_%H-%M")  # DD-MM_HH-MM format
