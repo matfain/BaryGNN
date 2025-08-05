@@ -56,10 +56,17 @@ def generate_configs(base_config_path, param_grid, output_dir):
                 setattr(config, name, value)
                 
         
-        # Set experiment name
-        param_str = "_".join([f"{name.split('.')[-1]}={value}" for name, value in zip(param_names, params)])
-        config.experiment_type = f"{base_config.experiment_type}_{param_str}"
+        # Set experiment name with index instead of parameters
+        config.experiment_type = f"{base_config.experiment_type}_job{i:04d}"
         
+        # Store the parameter values in the wandb tags for tracking
+        param_tags = [f"{name.split('.')[-1]}={value}" for name, value in zip(param_names, params)]
+        config.wandb.tags = config.wandb.tags + param_tags if config.wandb.tags else param_tags
+        config.wandb.project = f"{base_config.wandb.project}_{output_dir.name}"
+        
+        # Store parameter details in notes for reference
+        param_details = ", ".join(param_tags)
+        config.wandb.notes = f"Grid search job {i:04d}. Parameters: {param_details}"
         # Save configuration
         config_path = output_dir / f"{config.experiment_type}.yaml"
         config.to_yaml(config_path)

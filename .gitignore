@@ -28,3 +28,4 @@ logs/
 data/
 checkpoints/
 sandbox/
+barygnn/config/grid_search_configs/
