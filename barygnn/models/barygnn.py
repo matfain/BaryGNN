@@ -35,9 +35,9 @@ class BaryGNN(nn.Module):
         hidden_dim: int = 64,
         codebook_size: int = 16,
         distribution_size: int = 32,
-        readout_type: str = "weighted_mean",
-        combined_readout: str = "global_add_pool",  # For combined readout
-        barycentric_readout: str = "weighted_mean",  # For combined readout
+        pooling_backend: str = "barycenter",  # "barycenter" or "regular_pooling"
+        standard_pooling_method: str = "global_mean_pool",  # For both backends
+        readout_type: str = "weighted_mean",  # For barycentric pooling
         
         # Encoder parameters
         encoder_type: str = "GIN",
@@ -48,6 +48,8 @@ class BaryGNN(nn.Module):
         
         # Pooling parameters  
         sinkhorn_epsilon: float = 0.2,
+        p: int = 2,
+        scaling: float = 0.9,
         
         # Classification parameters
         classifier_type: str = "enhanced",  # "simple", "enhanced", "adaptive", "deep_residual"
@@ -100,9 +102,9 @@ class BaryGNN(nn.Module):
         self.hidden_dim = hidden_dim
         self.codebook_size = codebook_size
         self.distribution_size = distribution_size
+        self.pooling_backend = pooling_backend
+        self.standard_pooling_method = standard_pooling_method
         self.readout_type = readout_type
-        self.combined_readout = combined_readout
-        self.barycentric_readout = barycentric_readout
         self.use_distribution_reg = use_distribution_reg
         self.reg_type = reg_type
         self.reg_lambda = reg_lambda
@@ -127,50 +129,48 @@ class BaryGNN(nn.Module):
             dropout=encoder_dropout
         )
         
-        # GeomLoss barycentric pooling with learned codebook
-        pooling_kwargs = {
-            'hidden_dim': hidden_dim,
-            'codebook_size': codebook_size,
-            'epsilon': sinkhorn_epsilon,
-            'p': 2,
-            'debug_mode': debug_mode
-        }
+        # Pooling configuration
+        if pooling_backend == "barycenter":
+            pooling_kwargs = {
+                'hidden_dim': hidden_dim,
+                'codebook_size': codebook_size,
+                'epsilon': sinkhorn_epsilon,
+                'p': p,
+                'scaling': scaling,
+                'debug_mode': debug_mode
+            }
+        else:  # regular_pooling
+            pooling_kwargs = {
+                'hidden_dim': hidden_dim,
+                'standard_pooling_method': standard_pooling_method,
+                'debug_mode': debug_mode
+            }
         
-        self.pooling = create_barycentric_pooling(**pooling_kwargs)
+        self.pooling = create_barycentric_pooling(backend=pooling_backend, **pooling_kwargs)
         
-        # Readout layer
-        self.readout = Readout(
-            hidden_dim=hidden_dim,
-            codebook_size=codebook_size,
-            readout_type=readout_type,
-            combined_readout=combined_readout,
-            barycentric_readout=barycentric_readout
-        )
+        # Readout layer (only needed for barycentric pooling)
+        if pooling_backend == "barycenter":
+            self.readout = Readout(
+                hidden_dim=hidden_dim,
+                codebook_size=codebook_size,
+                standard_pooling_method=standard_pooling_method,
+                readout_type=readout_type
+            )
+        else:
+            self.readout = None
         
-        # Determine classifier input dimension based on pooling and readout types
-        pooling_kwargs_backend = kwargs.get('pooling', {}).get('backend', 'barycenter')
-        
-        if pooling_kwargs_backend == "regular_pooling":
+        # Determine classifier input dimension based on pooling backend
+        if pooling_backend == "regular_pooling":
             # For regular pooling, input is just the graph embedding
             classifier_input_dim = hidden_dim
         else:
-            # For barycentric pooling, use existing logic
-            if readout_type == "weighted_mean":
-                classifier_input_dim = hidden_dim
-            elif readout_type == "concat":
-                # Concat: histogram_weights + flattened_codebook_atoms
-                # [batch_size, codebook_size + codebook_size * hidden_dim]
-                classifier_input_dim = codebook_size + codebook_size * hidden_dim
-            elif readout_type == "combined":
-                # Combined readout: barycentric + traditional pooling
-                if barycentric_readout == "concat":
-                    barycentric_dim = codebook_size + codebook_size * hidden_dim  # histogram_weights + flattened_atoms
-                else:  # weighted_mean
-                    barycentric_dim = hidden_dim
-                traditional_dim = hidden_dim  # Traditional pooling output dimension
-                classifier_input_dim = barycentric_dim + traditional_dim
-            else:
-                raise ValueError(f"Invalid readout_type: {readout_type}. Must be one of: 'weighted_mean', 'concat', 'combined'")
+            # For barycentric pooling with combined readout
+            if readout_type == "concat":
+                barycentric_dim = codebook_size + codebook_size * hidden_dim  # histogram_weights + flattened_atoms
+            else:  # weighted_mean
+                barycentric_dim = hidden_dim
+            traditional_dim = hidden_dim  # Traditional pooling output dimension
+            classifier_input_dim = barycentric_dim + traditional_dim
         
         classifier_kwargs = {
             'in_dim': classifier_input_dim,
@@ -212,7 +212,7 @@ class BaryGNN(nn.Module):
         # Count parameters for each component
         encoder_params = sum(p.numel() for p in self.encoder.parameters())
         pooling_params = sum(p.numel() for p in self.pooling.parameters())
-        readout_params = sum(p.numel() for p in self.readout.parameters())
+        readout_params = sum(p.numel() for p in self.readout.parameters()) if self.readout is not None else 0
         classifier_params = sum(p.numel() for p in self.classifier.parameters())
         
         # Count trainable vs non-trainable
@@ -225,8 +225,9 @@ class BaryGNN(nn.Module):
         logger.info("MODEL PARAMETER BREAKDOWN")
         logger.info("=" * 60)
         logger.info(f"Multi-Head Encoder:     {encoder_params:>12,} parameters")
-        logger.info(f"Barycentric Pooling:    {pooling_params:>12,} parameters")
-        logger.info(f"Readout Layer:          {readout_params:>12,} parameters")
+        logger.info(f"Pooling:                {pooling_params:>12,} parameters")
+        if self.readout is not None:
+            logger.info(f"Readout Layer:          {readout_params:>12,} parameters")
         logger.info(f"Classification Head:    {classifier_params:>12,} parameters")
         logger.info("-" * 60)
         logger.info(f"Total Parameters:       {total_params:>12,} parameters")
@@ -238,14 +239,17 @@ class BaryGNN(nn.Module):
         param_density = {
             'encoder_ratio': encoder_params / total_params * 100,
             'pooling_ratio': pooling_params / total_params * 100,
-            'readout_ratio': readout_params / total_params * 100,
             'classifier_ratio': classifier_params / total_params * 100
         }
+        
+        if self.readout is not None:
+            param_density['readout_ratio'] = readout_params / total_params * 100
         
         logger.info("PARAMETER DISTRIBUTION:")
         logger.info(f"Encoder:        {param_density['encoder_ratio']:>6.1f}%")
         logger.info(f"Pooling:        {param_density['pooling_ratio']:>6.1f}%")
-        logger.info(f"Readout:        {param_density['readout_ratio']:>6.1f}%")
+        if self.readout is not None:
+            logger.info(f"Readout:        {param_density['readout_ratio']:>6.1f}%")
         logger.info(f"Classifier:     {param_density['classifier_ratio']:>6.1f}%")
         logger.info("=" * 60)
         
@@ -256,10 +260,12 @@ class BaryGNN(nn.Module):
             'non_trainable_parameters': non_trainable_params,
             'encoder_parameters': encoder_params,
             'pooling_parameters': pooling_params,
-            'readout_parameters': readout_params,
             'classifier_parameters': classifier_params,
             'parameter_distribution': param_density
         }
+        
+        if self.readout is not None:
+            self._parameter_info['readout_parameters'] = readout_params
     
     def _check_nan(self, tensor, name):
         """Check if tensor contains NaN values and log information."""
@@ -347,11 +353,10 @@ class BaryGNN(nn.Module):
                 barycenter_weights = torch.ones(batch_size, self.codebook_size, 
                                               device=barycenter_weights.device) / self.codebook_size
             
-            # Apply readout to get graph embeddings
-            if self.readout_type == "combined":
-                # For combined readout, we need to pass node distributions to the readout
-                self.readout.set_node_data(node_distributions, batch_idx)
+            # Always pass node distributions to the readout for combined approach
+            self.readout.set_node_data(node_distributions, batch_idx)
             
+            # Apply readout to get graph embeddings
             graph_embeddings = self.readout(barycenter_weights, self.pooling.codebook)
         
         else:
@@ -459,7 +464,7 @@ class BaryGNN(nn.Module):
                 'non_trainable_parameters': total_params - trainable_params,
                 'encoder_parameters': sum(p.numel() for p in self.encoder.parameters()),
                 'pooling_parameters': sum(p.numel() for p in self.pooling.parameters()),
-                'readout_parameters': sum(p.numel() for p in self.readout.parameters()),
+                'readout_parameters': sum(p.numel() for p in self.readout.parameters()) if self.readout is not None else 0,
                 'classifier_parameters': sum(p.numel() for p in self.classifier.parameters()),
             }
         
@@ -468,8 +473,9 @@ class BaryGNN(nn.Module):
             'hidden_dim': self.hidden_dim,
             'codebook_size': self.codebook_size,
             'distribution_size': self.distribution_size,
+            'pooling_backend': self.pooling_backend,
+            'standard_pooling_method': self.standard_pooling_method,
             'readout_type': self.readout_type,
-            'combined_readout': self.combined_readout,
             'regularization': self.reg_type if self.use_distribution_reg else None,
             'encoder_type': type(self.encoder).__name__,
             'pooling_type': type(self.pooling).__name__,

@@ -16,21 +16,21 @@ class RegularPooling(nn.Module):
     
     def __init__(self,
                  hidden_dim: int,
-                 pooling_method: str = "global_mean_pool",  # "global_add_pool", "global_mean_pool", "global_max_pool"
+                 standard_pooling_method: str = "global_mean_pool",  # "global_add_pool", "global_mean_pool", "global_max_pool"
                  backend: str = "regular_pooling",  # Ignored, just for compatibility
                  **kwargs):  # Accept but ignore other BarycentricPooling params
         super().__init__()
         
         self.hidden_dim = hidden_dim
-        self.pooling_method = pooling_method
+        self.pooling_method = standard_pooling_method
         
         # Validate pooling method
         valid_pooling_methods = ["global_add_pool", "global_mean_pool", "global_max_pool"]
-        if pooling_method not in valid_pooling_methods:
-            raise ValueError(f"Unknown pooling method: {pooling_method}. Choose from: {valid_pooling_methods}")
+        if standard_pooling_method not in valid_pooling_methods:
+            raise ValueError(f"Unknown pooling method: {standard_pooling_method}. Choose from: {valid_pooling_methods}")
         
         # No learnable parameters
-        logger.info(f"Initialized RegularPooling with method: {pooling_method}")
+        logger.info(f"Initialized RegularPooling with method: {standard_pooling_method}")
     
     def forward(self, node_distributions: torch.Tensor, batch_idx: torch.Tensor):
         """

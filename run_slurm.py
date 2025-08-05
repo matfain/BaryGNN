@@ -32,7 +32,7 @@ def create_slurm_script(config_path, output_dir):
     output_dir.mkdir(parents=True, exist_ok=True)
     
     # Create SLURM script
-    job_name = f"{config.experiment_type}_{config.data.name}_{config.model.readout_type}"
+    job_name = f"{config.experiment_type}_{config.data.name}_{config.model.pooling.backend}"
     slurm_script_path = output_dir / f"{job_name}.sh"
     with open(slurm_script_path, "w") as f:
         f.write("#!/bin/bash\n")
@@ -86,15 +86,15 @@ def main():
     
     # Define parameter grid
     param_grid = {
-        "model.readout_type": ["combined"],
+        "model.pooling.readout_type": ["weighted_mean", "concat"],
         "model.pooling.codebook_size": [32, 64],
         "model.pooling.epsilon": [0.01, 0.05, 0.1],
         "model.encoder.type": ["GIN", "GraphSAGE"],
     }
 
-    # Define parameter grid
+    # Simplified parameter grid for testing
     param_grid = {
-        "model.readout_type": ["combined"],
+        "model.pooling.readout_type": ["weighted_mean"],
         "model.pooling.codebook_size": [64],
         "model.pooling.epsilon": [0.31],
         "model.encoder.type": ["GIN"],

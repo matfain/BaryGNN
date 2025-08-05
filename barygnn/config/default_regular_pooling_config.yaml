@@ -8,7 +8,7 @@ model:
   
   encoder:
     type: "GIN"
-    in_dim: 7
+    in_dim: 0  # Will be overridden by dataset
     num_layers: 3
     dropout: 0.5
     multi_head_type: "efficient"
@@ -19,18 +19,20 @@ model:
   
   pooling:
     backend: "regular_pooling"
-    standard_pooling_method: "global_mean_pool"
+    standard_pooling_method: "global_mean_pool"  # "global_add_pool", "global_mean_pool", "global_max_pool"
   
   classification:
-    type: "enhanced"
-    hidden_dims: [128, 64]
+    type: "enhanced"  # "simple", "enhanced", "adaptive", "deep_residual"
+    hidden_dims: [256, 128, 64]
     dropout: 0.2
     activation: "relu"
     norm_type: "batch"
+    depth_factor: 1.0  # For AdaptiveMLP
+    width_factor: 1.0  # For AdaptiveMLP
   
   regularization:
     enabled: true
-    type: "variance"
+    type: "variance"  # "variance", "centroid", "coherence"
     lambda_reg: 0.01
 
 data:
@@ -43,10 +45,10 @@ data:
   add_self_loops: true
 
 training:
-  num_epochs: 50
+  num_epochs: 300
   lr: 0.001
   weight_decay: 0.0001
-  patience: 20
+  patience: 50
   metric: "accuracy"
   device: "cuda"
   gradient_clip: 1.0
@@ -60,11 +62,11 @@ training:
 
 wandb:
   enabled: true
-  project: "barygnn_test"
-  entity: null
   api_key: 1cf1eb10b27e2214f8d38aa573fdacb7af0ed6c2
-  tags: ["regular_pooling", "MUTAG", "test"]
-  notes: "Testing regular pooling backend"
+  project: "barygnn"
+  entity: null
+  tags: []
+  notes: null
   save_code: true
   log_gradients: false
   log_parameters: true

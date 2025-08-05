@@ -1,12 +1,9 @@
-experiment_type: "barygnn_barycenter"
+experiment_type: "graph_classification"
 seed: 42
 
 model:
   version: "v2"
   hidden_dim: 64  # Unified dimension for encoder output AND codebook atoms
-  readout_type: "combined"
-  combined_readout: "global_add_pool"  # Traditional pooling method to combine with
-  barycentric_readout: "weighted_mean"  # Barycentric readout method: "weighted_mean" or "concat"
   debug_mode: true
   
   encoder:
@@ -18,11 +15,13 @@ model:
     multi_head_type: "efficient"  # "full" or "efficient"
     shared_layers: 2
     distribution_size: 32  # Number of vectors per node
-    projection_depth: 4 # Number of layers in each projection head (hourglass MLP)
-    projection_width_factor: 4.0 # Max width multiplier for hourglass MLP
+    projection_depth: 4  # Number of layers in each projection head (hourglass MLP)
+    projection_width_factor: 4.0  # Max width multiplier for hourglass MLP
   
   pooling:
-    backend: "barycenter"  # Use our new barycenter implementation
+    backend: "barycenter"
+    standard_pooling_method: "global_add_pool"
+    readout_type: "weighted_mean"
     codebook_size: 32
     epsilon: 0.2
     p: 2  # Order of Wasserstein distance
@@ -62,30 +61,29 @@ training:
   device: "cuda"
   gradient_clip: 1.0
   warmup_epochs: 0
-
+  
   scheduler: "plateau"
   scheduler_params:
-    mode: "max"           # monitor accuracy
+    mode: "max"  # monitor accuracy
     factor: 0.5
     patience: 10
-    cooldown: 5           # optional but helpful
-    min_lr: 0.0001 
+    cooldown: 5  # optional but helpful
+    min_lr: 0.0001
 
 wandb:
   enabled: true
-  project: "BaryGNN_BaryCenter"
+  project: "BaryGNN_Test"
   entity: null
   api_key: 1cf1eb10b27e2214f8d38aa573fdacb7af0ed6c2
-  tags: ["barycenter", "learnable_prior"]
-  notes: "Testing Wasserstein barycenter with learnable codebook prior"
+  tags: ["barycentric", "PROTEINS", "test"]
+  notes: "Testing barycentric pooling on PROTEINS dataset"
   save_code: true
-  log_gradients: true
+  log_gradients: false
   log_parameters: true
-  watch_model: true 
+  watch_model: true
 
 slurm:
-    experiment_type: "barygnn-barycenter"
-    partition: "studentkillable"
-    mem: "8G"
-    timelimit: "10:00:00"
-    gpu: 1
+  partition: "studentkillable"
+  mem: "8G"
+  timelimit: "10:00:00"
+  gpu: 1

@@ -89,16 +89,17 @@ class EncoderConfig:
 
 @dataclass
 class PoolingConfig:
-    """Enhanced configuration for the pooling methods."""
+    """Simplified configuration for the pooling methods."""
     
     backend: str = "barycenter"  # "barycenter", "regular_pooling"
+    standard_pooling_method: str = "global_mean_pool"  # "global_add_pool", "global_mean_pool", "global_max_pool"
+    
+    # Parameters only used by barycenter backend
+    readout_type: str = "weighted_mean"  # Only for barycenter: "weighted_mean" or "concat"
     codebook_size: int = 16
     epsilon: float = 0.2
-    epsilon_node: float = 0.3    # Stage 1 epsilon for hierarchical pooling
-    epsilon_graph: float = 0.1   # Stage 2 epsilon for hierarchical pooling
     p: int = 2  # Order of Wasserstein distance
-    scaling: float = 0.9  # Only used for GeomLoss
-    pooling_method: str = "global_mean_pool"  # For regular_pooling: "global_add_pool", "global_mean_pool", "global_max_pool"
+    scaling: float = 0.9
 
 
 @dataclass
@@ -141,13 +142,10 @@ class RegularizationConfig:
 
 @dataclass
 class ModelConfig:
-    """Enhanced configuration for the BaryGNN model."""
+    """Simplified configuration for the BaryGNN model."""
     
-    version: str = "v2"  # Keep for backward compatibility
+    version: str = "v2"
     hidden_dim: int = 64
-    readout_type: str = "weighted_mean"  # "weighted_mean", "concat", or "combined"
-    combined_readout: str = "global_add_pool"  # For combined readout: "global_add_pool", "global_mean_pool", "global_max_pool"
-    barycentric_readout: str = "weighted_mean"  # For combined readout: "weighted_mean" or "concat"
     debug_mode: bool = False
     
     encoder: EncoderConfig = field(default_factory=EncoderConfig)
@@ -261,20 +259,12 @@ class Config:
             return RegularizationConfig(**reg_dict)
 
         def convert_model(model_dict):
-            # Handle the case where distribution_size is in pooling but not in encoder
-            encoder_dict = model_dict.get("encoder", {}).copy()
+            encoder_dict = model_dict.get("encoder", {})
             pooling_dict = model_dict.get("pooling", {})
-            
-            # If distribution_size is in pooling but not in encoder, move it
-            if "distribution_size" in pooling_dict and "distribution_size" not in encoder_dict:
-                encoder_dict["distribution_size"] = pooling_dict["distribution_size"]
             
             return ModelConfig(
                 version=model_dict.get("version", "v2"),
                 hidden_dim=model_dict.get("hidden_dim", 64),
-                readout_type=model_dict.get("readout_type", "weighted_mean"),
-                combined_readout=model_dict.get("combined_readout", "global_add_pool"),
-                barycentric_readout=model_dict.get("barycentric_readout", "weighted_mean"),
                 debug_mode=model_dict.get("debug_mode", False),
                 encoder=convert_encoder(encoder_dict),
                 pooling=convert_pooling(pooling_dict),
@@ -350,9 +340,6 @@ class Config:
             "model": {
                 "version": self.model.version,
                 "hidden_dim": self.model.hidden_dim,
-                "readout_type": self.model.readout_type,
-                "combined_readout": self.model.combined_readout,
-                "barycentric_readout": self.model.barycentric_readout,
                 "debug_mode": self.model.debug_mode,
                 "encoder": {
                     "type": self.model.encoder.type,
@@ -368,13 +355,12 @@ class Config:
                 },
                 "pooling": {
                     "backend": self.model.pooling.backend,
-                    "codebook_size": self.model.pooling.codebook_size,
-                    "epsilon": self.model.pooling.epsilon,
-                    "epsilon_node": self.model.pooling.epsilon_node,
-                    "epsilon_graph": self.model.pooling.epsilon_graph,
-                    "p": self.model.pooling.p,
-                    "scaling": self.model.pooling.scaling,
-                    "pooling_method": self.model.pooling.pooling_method,
+                    "standard_pooling_method": self.model.pooling.standard_pooling_method,
+                    **({"readout_type": self.model.pooling.readout_type,
+                        "codebook_size": self.model.pooling.codebook_size,
+                        "epsilon": self.model.pooling.epsilon,
+                        "p": self.model.pooling.p,
+                        "scaling": self.model.pooling.scaling} if self.model.pooling.backend == "barycenter" else {})
                 },
                 "classification": {
                     "type": self.model.classification.type,
@@ -453,9 +439,9 @@ class Config:
             'hidden_dim': self.model.hidden_dim,
             'codebook_size': self.model.pooling.codebook_size,
             'distribution_size': self.model.encoder.distribution_size,
-            'readout_type': self.model.readout_type,
-            'combined_readout': self.model.combined_readout,
-            'barycentric_readout': self.model.barycentric_readout,
+            'pooling_backend': self.model.pooling.backend,
+            'standard_pooling_method': self.model.pooling.standard_pooling_method,
+            'readout_type': self.model.pooling.readout_type,
             
             # Encoder parameters
             'encoder_type': self.model.encoder.type,
@@ -467,13 +453,9 @@ class Config:
             'projection_width_factor': self.model.encoder.projection_width_factor,
             
             # Pooling parameters
-            'backend': self.model.pooling.backend,
             'sinkhorn_epsilon': self.model.pooling.epsilon,
-            'epsilon_node': self.model.pooling.epsilon_node,
-            'epsilon_graph': self.model.pooling.epsilon_graph,
             'p': self.model.pooling.p,
             'scaling': self.model.pooling.scaling,
-            'pooling_method': self.model.pooling.pooling_method,
             
             # Classification parameters
             'classifier_type': self.model.classification.type,
