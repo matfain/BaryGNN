@@ -1,17 +1,13 @@
-from .geomloss_pooling import GeomLossBarycentricPooling
-from .hier_sinkhorn import HierarchicalPooling
+from .geomloss_barycenter import BarycentricPooling
 
-def create_barycentric_pooling(backend="geomloss", **kwargs):
+def create_barycentric_pooling(backend="barycenter", **kwargs):
     backend = backend.lower()
-    if backend == "geomloss":
-        return GeomLossBarycentricPooling(**kwargs)
-    elif backend == "hierarchical":
-        return HierarchicalPooling(**kwargs)
+    if backend == "barycenter":
+        return BarycentricPooling(**kwargs)
     else:
-        raise ValueError(f"Unknown OT backend '{backend}'. Choose from: 'geomloss', 'hierarchical'")
+        raise ValueError(f"Unknown OT backend '{backend}'. Currently only 'barycenter' is supported.")
 
 __all__ = [
-    "GeomLossBarycentricPooling",
-    "HierarchicalPooling",
+    "BarycentricPooling",
     "create_barycentric_pooling",
 ]

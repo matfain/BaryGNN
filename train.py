@@ -118,7 +118,7 @@ def run_training(config: Config) -> None:
     
     model = create_barygnn(version=config.model.version, **model_kwargs).to(device)
     # gradient debugging: register hooks if needed
-    model.pooling.register_gradient_hooks()
+    # model.pooling.register_gradient_hooks()
     
     # Log model information
     if hasattr(model, 'get_model_info'):
@@ -252,7 +252,8 @@ def run_training(config: Config) -> None:
         wandb.finish()
     
     logger.info("Training completed successfully!")
-    
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='BaryGNN v2 Configuration-Based Training')
     parser.add_argument('--config', type=str, help='Path to configuration file')
