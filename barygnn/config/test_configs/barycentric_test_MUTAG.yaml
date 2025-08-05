@@ -1,4 +1,4 @@
-experiment_type: "graph_classification"
+experiment_type: "MUTAG_Barycentric"
 seed: 42
 
 model:

@@ -206,12 +206,15 @@ def run_training(config: Config) -> None:
             
             # Save model checkpoint
             os.makedirs('checkpoints', exist_ok=True)
+            
+            # Include pooling backend to help with debugging
             torch.save({
                 'epoch': epoch,
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
                 'best_val_accuracy': best_val_accuracy,
                 'config': config.to_dict(),
+                'pooling_backend': config.model.pooling.backend
             }, f'checkpoints/{config.experiment_type}_best.pt')
             
             logger.info(f"New best model saved with validation accuracy: {best_val_accuracy:.4f}")
@@ -227,6 +230,8 @@ def run_training(config: Config) -> None:
     checkpoint_path = f'checkpoints/{config.experiment_type}_best.pt'
     if os.path.exists(checkpoint_path):
         checkpoint = torch.load(checkpoint_path)
+        logger.info(f"Loading best model from {checkpoint_path} (epoch {checkpoint['epoch']})")
+        logger.info(f"Model config: {config.model.pooling.backend}, Checkpoint pooling: {checkpoint.get('pooling_backend', 'unknown')}")
         model.load_state_dict(checkpoint['model_state_dict'])
         logger.info("Loaded best model for final evaluation")
     
