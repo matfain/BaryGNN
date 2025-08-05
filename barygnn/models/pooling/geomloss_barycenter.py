@@ -61,7 +61,7 @@ class BarycentricPooling(nn.Module):
 
     def forward(self, node_distributions: torch.Tensor, batch_idx: torch.Tensor):
         """
-        Compute true Wasserstein barycenter for each graph.
+        Compute true Wasserstein barycenter for each graph using vectorized operations.
         
         Args:
             node_distributions: [N, S, hidden_dim] - node feature distributions
@@ -80,36 +80,100 @@ class BarycentricPooling(nn.Module):
         # Get normalized codebook prior
         prior = self.codebook_prior
         
-        # Pre-allocate output tensor
+        # Compute OT histograms for all nodes in parallel
+        node_histograms = self._compute_ot_histogram_batch(node_distributions, prior)  # [N, K]
+        
+        # Pre-allocate output tensor for graph histograms
         graph_histograms = torch.zeros(B, K, device=node_distributions.device, dtype=node_distributions.dtype)
         graph_node_counts = torch.zeros(B, device=node_distributions.device, dtype=torch.long)
         
-        # Count nodes per graph for averaging later
-        for b in range(B):
-            graph_node_counts[b] = (batch_idx == b).sum().item()
+        # Count nodes per graph for averaging later (vectorized)
+        unique_graphs, counts = torch.unique(batch_idx, return_counts=True)
+        graph_node_counts[unique_graphs] = counts
         
-        # Process each node's distribution and accumulate results by graph
+        # Accumulate histograms by graph (using index_add for efficiency)
         for n in range(N):
-            # Get node's distribution and graph index
-            node_dist = node_distributions[n]  # [S, hidden_dim]
             graph_idx = batch_idx[n].item()
-            
-            # Compute OT histogram for this node
-            node_hist = self._compute_ot_histogram(node_dist, prior)
-            
-            # Accumulate histogram for the graph
-            graph_histograms[graph_idx] += node_hist
+            graph_histograms[graph_idx] += node_histograms[n]
         
-        # Average node histograms for each graph
-        for b in range(B):
-            if graph_node_counts[b] > 0:
-                graph_histograms[b] = graph_histograms[b] / graph_node_counts[b]
-            else:
-                # Fallback to prior if graph has no nodes (shouldn't happen but just in case)
-                graph_histograms[b] = prior
+        # Average node histograms for each graph (vectorized)
+        valid_graphs = graph_node_counts > 0
+        graph_histograms[valid_graphs] = graph_histograms[valid_graphs] / graph_node_counts[valid_graphs].unsqueeze(1)
+        
+        # Handle empty graphs (if any)
+        empty_graphs = ~valid_graphs
+        if empty_graphs.any():
+            graph_histograms[empty_graphs] = prior.unsqueeze(0).expand(empty_graphs.sum(), K)
                 
         return graph_histograms
     
+    def _compute_ot_histogram_batch(self, X_batch: torch.Tensor, prior: torch.Tensor) -> torch.Tensor:
+        """
+        Compute OT histograms for a batch of node distributions in parallel.
+        
+        Args:
+            X_batch: [N, S, hidden_dim] - Batch of node feature distributions
+            prior: [codebook_size] - Prior distribution over codebook atoms
+            
+        Returns:
+            hist_batch: [N, codebook_size] - Batch of OT histograms
+        """
+        N, S, d = X_batch.shape
+        K = self.codebook_size
+        device = X_batch.device
+        dtype = X_batch.dtype
+        
+        # Create uniform weights for each node's distribution samples
+        # Shape: [N, S]
+        a_batch = torch.full((N, S), 1.0 / S, device=device, dtype=dtype)
+        
+        # Expand prior for each node
+        # Shape: [N, K]
+        b_batch = prior.unsqueeze(0).expand(N, K).to(dtype=dtype)
+        
+        # Reshape inputs for batch processing with GeomLoss
+        # GeomLoss expects weights as [N, S] and [N, K]
+        # and points as [N, S, D] and [N, K, D]
+        
+        # Expand codebook for each node in batch
+        # Shape: [N, K, d]
+        # Use contiguous() to ensure memory layout is contiguous
+        codebook_expanded = self.codebook.unsqueeze(0).expand(N, K, d).contiguous()
+        
+        # Ensure all inputs are contiguous
+        a_batch = a_batch.contiguous()
+        X_batch = X_batch.contiguous()
+        b_batch = b_batch.contiguous()
+        
+        # Compute batch OT with GeomLoss
+        # This returns dual potentials Fi: [N, S] and Gj: [N, K]
+        Fi, Gj = self.sinkhorn(a_batch, X_batch, b_batch, codebook_expanded)
+        
+        # Compute cost matrices for all nodes at once
+        # Shape: [N, S, K]
+        # Use contiguous tensors for cdist operation
+        C_ij_batch = torch.cdist(X_batch, self.codebook.unsqueeze(0).expand(N, K, d).contiguous(), p=self.p).pow(self.p)
+        
+        # Compute log transport plans for all nodes
+        # Shape: [N, S, K]
+        log_pi_batch = (Fi.unsqueeze(-1) + Gj.unsqueeze(1) - C_ij_batch) / self.epsilon
+        log_pi_batch = log_pi_batch + torch.log(a_batch).unsqueeze(-1) + torch.log(b_batch).unsqueeze(1)
+        
+        # Column sums: log-sum-exp over S dimension for each node
+        # Shape: [N, K]
+        hist_batch = torch.exp(torch.logsumexp(log_pi_batch, dim=1))
+        
+        # Normalize each histogram for safety
+        # Shape: [N, K]
+        row_sums = hist_batch.sum(dim=1, keepdim=True)
+        hist_batch = hist_batch / (row_sums + 1e-12)
+        
+        # Handle NaN values if debugging is enabled
+        if self.debug and torch.isnan(hist_batch).any():
+            self._warn_and_fix_hist_batch(hist_batch, prior)
+            
+        return hist_batch
+        
     def _compute_ot_histogram(self, X: torch.Tensor, prior: torch.Tensor) -> torch.Tensor:
         """
         Compute OT histogram for a single node's distribution.
@@ -121,36 +185,27 @@ class BarycentricPooling(nn.Module):
         Returns:
             hist: [codebook_size] - OT histogram
         """
-        S = X.size(0)  # Number of samples in node distribution
-        K = self.codebook_size
+        # Reshape to batch of size 1 and use the batch version
+        X_batch = X.unsqueeze(0)  # [1, S, hidden_dim]
+        hist_batch = self._compute_ot_histogram_batch(X_batch, prior)
+        return hist_batch.squeeze(0)  # [codebook_size]
+    
+    def _warn_and_fix_hist_batch(self, hist_batch: torch.Tensor, prior: torch.Tensor):
+        """
+        Handle NaN values in a batch of histograms by falling back to the prior.
         
-        # Uniform source mass (each sample in node distribution has equal weight)
-        a = torch.full((S,), 1.0 / S, device=X.device, dtype=X.dtype)
-        
-        # Target mass is the learnable prior
-        b = prior.to(device=X.device, dtype=X.dtype)
-        
-        # GeomLoss returns (1, S) and (1, K); squeeze to 1-D
-        Fi, Gj = self.sinkhorn(a, X, b, self.codebook)
-        Fi, Gj = Fi.squeeze(0), Gj.squeeze(0)  # (S,), (K,)
-        
-        # Cost matrix ||x_i – c_j||_p^p (broadcasted)
-        C_ij = torch.cdist(X, self.codebook, p=self.p).pow(self.p)  # (S, K)
-        
-        # Log-space transport plan: log π_ij = (Fi_i + Gj_j − C_ij) / ε + log a_i + log b_j
-        log_pi = (Fi[:, None] + Gj[None, :] - C_ij) / self.epsilon
-        log_pi = log_pi + torch.log(a)[:, None] + torch.log(b)[None, :]
-        
-        # Column sums: log-sum-exp over i
-        hist = torch.exp(torch.logsumexp(log_pi, dim=0))  # (K,)
-        
-        # Normalize for safety
-        hist = hist / (hist.sum() + 1e-12)
-        
-        if self.debug and torch.isnan(hist).any():
-            self._warn_and_fix_hist(hist, prior)
+        Args:
+            hist_batch: [N, codebook_size] - Batch of computed histograms
+            prior: [codebook_size] - Prior distribution
+        """
+        # Find which histograms have NaN values
+        nan_mask = torch.isnan(hist_batch).any(dim=1)
+        if nan_mask.any():
+            num_nans = nan_mask.sum().item()
+            logger.warning(f"NaN in {num_nans} histograms, falling back to prior.")
             
-        return hist
+            # Replace NaN histograms with the prior
+            hist_batch[nan_mask] = prior.unsqueeze(0).expand(num_nans, -1)
     
     def _warn_and_fix_hist(self, hist: torch.Tensor, prior: torch.Tensor):
         """
