@@ -1,0 +1,88 @@
+experiment_type: "barygnn_regular_pooling"
+seed: 42
+partition: 
+
+model:
+  version: "v2"
+  hidden_dim: 64  # Unified dimension for encoder output
+  readout_type: "weighted_mean"  # Not used with regular_pooling
+  debug_mode: true
+  
+  encoder:
+    type: "GIN"  # "GIN" or "GraphSAGE"
+    in_dim: 0  # Will be set based on dataset
+    num_layers: 5
+    dropout: 0.3
+    aggr: "sum"  # For GraphSAGE
+    multi_head_type: "efficient"  # "full" or "efficient"
+    shared_layers: 2
+    distribution_size: 32  # Number of vectors per node
+    projection_depth: 4 # Number of layers in each projection head (hourglass MLP)
+    projection_width_factor: 4.0 # Max width multiplier for hourglass MLP
+  
+  pooling:
+    backend: "regular_pooling"  # Use our new regular pooling implementation
+    pooling_method: "global_mean_pool"  # "global_add_pool", "global_mean_pool", "global_max_pool"
+    codebook_size: 32  # Not used but required for config compatibility
+  
+  classification:
+    type: "simple"  # "simple", "enhanced", "adaptive", "deep_residual"
+    dropout: 0.2
+    activation: "relu"  # "relu", "leaky_relu", "gelu", "swish"
+    norm_type: "batch"  # "batch", "layer", null
+    hidden_dims: [256, 128, 64]
+    use_residual: true
+    residual_type: "add"  # "add", "concat"
+    final_dropout: 0.3
+  
+  regularization:
+    enabled: true
+    type: "variance"  # "variance", "centroid", "coherence"
+    lambda_reg: 0.2
+
+data:
+  name: "MUTAG"
+  batch_size: 32
+  num_workers: 4
+  split_seed: 42
+  val_ratio: 0.1
+  test_ratio: 0.1
+  normalize_features: true
+  add_self_loops: true
+
+training:
+  num_epochs: 200
+  lr: 0.01
+  weight_decay: 0.0005
+  patience: 50
+  metric: "accuracy"
+  device: "cuda"
+  gradient_clip: 1.0
+  warmup_epochs: 0
+
+  scheduler: "plateau"
+  scheduler_params:
+    mode: "max"           # monitor accuracy
+    factor: 0.5
+    patience: 10
+    cooldown: 5           # optional but helpful
+    min_lr: 0.0001 
+
+wandb:
+  enabled: true
+  project: "BaryGNN_Benchmark"
+  entity: null
+  api_key: 1cf1eb10b27e2214f8d38aa573fdacb7af0ed6c2
+  tags: ["regular_pooling", "baseline"]
+  notes: "Testing regular pooling as a baseline for comparison with barycentric pooling"
+  save_code: true
+  log_gradients: true
+  log_parameters: true
+  watch_model: true 
+
+slurm:
+    experiment_type: "barygnn-regular-pooling"
+    partition: "studentkillable"
+    mem: "8G"
+    timelimit: "10:00:00"
+    gpu: 1
