@@ -89,15 +89,16 @@ class EncoderConfig:
 
 @dataclass
 class PoolingConfig:
-    """Enhanced configuration for the barycentric pooling."""
+    """Enhanced configuration for the pooling methods."""
     
-    backend: str = "geomloss"  # "geomloss" or "hierarchical"
+    backend: str = "barycenter"  # "barycenter", "regular_pooling"
     codebook_size: int = 16
     epsilon: float = 0.2
     epsilon_node: float = 0.3    # Stage 1 epsilon for hierarchical pooling
     epsilon_graph: float = 0.1   # Stage 2 epsilon for hierarchical pooling
     p: int = 2  # Order of Wasserstein distance
     scaling: float = 0.9  # Only used for GeomLoss
+    pooling_method: str = "global_mean_pool"  # For regular_pooling: "global_add_pool", "global_mean_pool", "global_max_pool"
 
 
 @dataclass
@@ -373,6 +374,7 @@ class Config:
                     "epsilon_graph": self.model.pooling.epsilon_graph,
                     "p": self.model.pooling.p,
                     "scaling": self.model.pooling.scaling,
+                    "pooling_method": self.model.pooling.pooling_method,
                 },
                 "classification": {
                     "type": self.model.classification.type,
@@ -471,6 +473,7 @@ class Config:
             'epsilon_graph': self.model.pooling.epsilon_graph,
             'p': self.model.pooling.p,
             'scaling': self.model.pooling.scaling,
+            'pooling_method': self.model.pooling.pooling_method,
             
             # Classification parameters
             'classifier_type': self.model.classification.type,

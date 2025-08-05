@@ -5,7 +5,7 @@ from typing import Dict, Any, Optional, Union, List, Tuple, Literal
 import logging
 
 from barygnn.models.encoders.multi_head import create_multi_head_encoder
-from barygnn.models.pooling import create_barycentric_pooling
+from barygnn.models.pooling import create_barycentric_pooling, BarycentricPooling, RegularPooling
 from barygnn.models.readout.readout import Readout
 from barygnn.models.classification.enhanced_mlp import create_classifier
 from barygnn.losses.regularization import compute_distribution_regularization
@@ -147,23 +147,30 @@ class BaryGNN(nn.Module):
             barycentric_readout=barycentric_readout
         )
         
-        # Classification head
-        if readout_type == "weighted_mean":
+        # Determine classifier input dimension based on pooling and readout types
+        pooling_kwargs_backend = kwargs.get('pooling', {}).get('backend', 'barycenter')
+        
+        if pooling_kwargs_backend == "regular_pooling":
+            # For regular pooling, input is just the graph embedding
             classifier_input_dim = hidden_dim
-        elif readout_type == "concat":
-            # Concat: histogram_weights + flattened_codebook_atoms
-            # [batch_size, codebook_size + codebook_size * hidden_dim]
-            classifier_input_dim = codebook_size + codebook_size * hidden_dim
-        elif readout_type == "combined":
-            # Combined readout: barycentric + traditional pooling
-            if barycentric_readout == "concat":
-                barycentric_dim = codebook_size + codebook_size * hidden_dim  # histogram_weights + flattened_atoms
-            else:  # weighted_mean
-                barycentric_dim = hidden_dim
-            traditional_dim = hidden_dim  # Traditional pooling output dimension
-            classifier_input_dim = barycentric_dim + traditional_dim
         else:
-            raise ValueError(f"Invalid readout_type: {readout_type}. Must be one of: 'weighted_mean', 'concat', 'combined'")
+            # For barycentric pooling, use existing logic
+            if readout_type == "weighted_mean":
+                classifier_input_dim = hidden_dim
+            elif readout_type == "concat":
+                # Concat: histogram_weights + flattened_codebook_atoms
+                # [batch_size, codebook_size + codebook_size * hidden_dim]
+                classifier_input_dim = codebook_size + codebook_size * hidden_dim
+            elif readout_type == "combined":
+                # Combined readout: barycentric + traditional pooling
+                if barycentric_readout == "concat":
+                    barycentric_dim = codebook_size + codebook_size * hidden_dim  # histogram_weights + flattened_atoms
+                else:  # weighted_mean
+                    barycentric_dim = hidden_dim
+                traditional_dim = hidden_dim  # Traditional pooling output dimension
+                classifier_input_dim = barycentric_dim + traditional_dim
+            else:
+                raise ValueError(f"Invalid readout_type: {readout_type}. Must be one of: 'weighted_mean', 'concat', 'combined'")
         
         classifier_kwargs = {
             'in_dim': classifier_input_dim,
@@ -304,32 +311,51 @@ class BaryGNN(nn.Module):
             logger.warning("NaN detected in node distributions, applying fallback")
             node_distributions = torch.nan_to_num(node_distributions, nan=0.0)
         
-        # Apply barycentric pooling
-        barycenter_weights = self.pooling(node_distributions, batch_idx)
-        
-        # Debug barycenter weights
-        if self.debug_mode:
-            self._check_nan(barycenter_weights, "barycenter_weights")
-            logger.debug(f"Barycenter weights shape: {barycenter_weights.shape}")
+        # Apply pooling based on pooling type
+        if isinstance(self.pooling, RegularPooling):
+            # Regular pooling directly produces graph embeddings
+            graph_embeddings = self.pooling(node_distributions, batch_idx)
             
-            # Log weight statistics
-            weight_entropy = -torch.sum(barycenter_weights * torch.log(barycenter_weights + 1e-8), dim=1)
-            logger.debug(f"Weight entropy - mean: {weight_entropy.mean().item():.4f}, "
-                        f"std: {weight_entropy.std().item():.4f}")
+            # Debug graph embeddings
+            if self.debug_mode:
+                self._check_nan(graph_embeddings, "graph_embeddings (regular pooling)")
+                logger.debug(f"Graph embeddings shape: {graph_embeddings.shape}")
+                
+            # Handle NaN values in graph embeddings
+            if torch.isnan(graph_embeddings).any():
+                logger.warning("NaN detected in graph embeddings, applying fallback")
+                graph_embeddings = torch.nan_to_num(graph_embeddings, nan=0.0)
         
-        # Handle NaN values in barycenter weights
-        if torch.isnan(barycenter_weights).any():
-            logger.warning("NaN detected in barycenter weights, using uniform fallback")
-            batch_size = barycenter_weights.size(0)
-            barycenter_weights = torch.ones(batch_size, self.codebook_size, 
-                                          device=barycenter_weights.device) / self.codebook_size
+        elif isinstance(self.pooling, BarycentricPooling):
+            # Barycentric pooling produces weights
+            barycenter_weights = self.pooling(node_distributions, batch_idx)
+            
+            # Debug barycenter weights
+            if self.debug_mode:
+                self._check_nan(barycenter_weights, "barycenter_weights")
+                logger.debug(f"Barycenter weights shape: {barycenter_weights.shape}")
+                
+                # Log weight statistics
+                weight_entropy = -torch.sum(barycenter_weights * torch.log(barycenter_weights + 1e-8), dim=1)
+                logger.debug(f"Weight entropy - mean: {weight_entropy.mean().item():.4f}, "
+                            f"std: {weight_entropy.std().item():.4f}")
+            
+            # Handle NaN values in barycenter weights
+            if torch.isnan(barycenter_weights).any():
+                logger.warning("NaN detected in barycenter weights, using uniform fallback")
+                batch_size = barycenter_weights.size(0)
+                barycenter_weights = torch.ones(batch_size, self.codebook_size, 
+                                              device=barycenter_weights.device) / self.codebook_size
+            
+            # Apply readout to get graph embeddings
+            if self.readout_type == "combined":
+                # For combined readout, we need to pass node distributions to the readout
+                self.readout.set_node_data(node_distributions, batch_idx)
+            
+            graph_embeddings = self.readout(barycenter_weights, self.pooling.codebook)
         
-        # Apply readout to get graph embeddings
-        if self.readout_type == "combined":
-            # For combined readout, we need to pass node distributions to the readout
-            self.readout.set_node_data(node_distributions, batch_idx)
-        
-        graph_embeddings = self.readout(barycenter_weights, self.pooling.codebook)
+        else:
+            raise ValueError(f"Unknown pooling type: {type(self.pooling).__name__}")
         
         # Debug graph embeddings
         if self.debug_mode:
