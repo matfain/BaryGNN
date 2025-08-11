@@ -1,5 +1,6 @@
 import os
 import logging
+import math
 import torch
 import torch.nn.functional as F
 from torch.optim import Adam
@@ -8,6 +9,32 @@ import wandb
 import argparse
 
 from barygnn import create_barygnn, Config, load_dataset, evaluate_model
+
+
+def _select_metric_value(metric_name : str, val_loss: float, val_metrics: dict) -> float:
+    """Return the scalar to optimize based on metric_name.
+
+    Supported names (case-insensitive): 'accuracy', 'macro_f1', 'roc_auc', 'loss'.
+    Defaults to 'accuracy' if unknown.
+    """
+    if metric_name == "loss":
+        return float(val_loss)
+    if metric_name in ("accuracy", "macro_f1", "roc_auc"):
+        return float(val_metrics.get(metric_name, 0.0))
+        
+    return float(val_metrics.get("accuracy", 0.0))
+
+
+def _is_maximize_metric(metric_name: str = "accuracy") -> bool:
+    """Whether higher is better for the given metric."""
+    return metric_name.lower() != "loss"
+
+
+def _sanitize_selected(value: float, to_maximize: bool) -> float:
+    """Guard against NaN/inf values so comparisons and schedulers behave."""
+    if value is None or (isinstance(value, float) and math.isnan(value)):
+        return float('-inf') if to_maximize else float('inf')
+    return float(value)
 
 def train_epoch(model, train_loader, optimizer, device, clip_grad_norm=None):
     logger = logging.getLogger(__name__)
@@ -74,6 +101,8 @@ def run_training(config: Config) -> None:
     # Load configuration
     logger.info(f"Loading configuration from {args.config}")
     config = Config.from_yaml(args.config)
+    selected_metric = (getattr(config.training, "metric", "accuracy") or "accuracy").lower()
+    to_maximize = _is_maximize_metric(selected_metric)
     
     logger.info(f"Starting BaryGNN training: {config.experiment_type}")
     
@@ -144,14 +173,17 @@ def run_training(config: Config) -> None:
             if key in ['mode', 'factor', 'patience', 'threshold', 'threshold_mode', 
                       'cooldown', 'min_lr', 'eps']:
                 valid_params[key] = value
-        
+        # Align mode with the chosen metric direction unless explicitly set correctly
+        forced_mode = 'max' if to_maximize else 'min'
+        if valid_params.get('mode') != forced_mode:
+            valid_params['mode'] = forced_mode
         scheduler = ReduceLROnPlateau(optimizer, **valid_params)
-        logger.info(f"Created ReduceLROnPlateau scheduler with params: {valid_params}")
+        logger.info(f"Created ReduceLROnPlateau scheduler with params: {valid_params} (selected_metric={selected_metric})")
     else:
         scheduler = None
     
     # Training loop
-    best_val_accuracy = 0
+    best_val_score = float('-inf') if to_maximize else float('inf')
     patience_counter = 0
     
     logger.info("Starting training...")
@@ -166,10 +198,11 @@ def run_training(config: Config) -> None:
         # Validation
         val_loss, val_metrics = evaluate_model(model, val_loader, device)
         val_accuracy = val_metrics['accuracy']
-        
+        selected_val = _sanitize_selected(_select_metric_value(selected_metric, val_loss, val_metrics), to_maximize)
+
         # Learning rate scheduling
         if scheduler is not None:
-            scheduler.step(val_accuracy)
+            scheduler.step(selected_val)
         
         current_lr = optimizer.param_groups[0]['lr']
         
@@ -181,6 +214,7 @@ def run_training(config: Config) -> None:
             f"Val Loss: {val_loss:.4f} | "
             f"Val Acc: {val_accuracy:.4f} | "
             f"Val F1: {val_metrics['macro_f1']:.4f} | "
+            f"Val {selected_metric}: {selected_val:.4f} | "
             f"LR: {current_lr:.6f}"
         )
         
@@ -196,12 +230,14 @@ def run_training(config: Config) -> None:
                 'val/accuracy': val_accuracy,
                 'val/macro_f1': val_metrics['macro_f1'],
                 'val/roc_auc': val_metrics['roc_auc'],
+                f'val/{selected_metric}': selected_val,
                 'learning_rate': current_lr,
             })
         
         # Save best model
-        if val_accuracy > best_val_accuracy:
-            best_val_accuracy = val_accuracy
+        is_better = (selected_val > best_val_score) if to_maximize else (selected_val < best_val_score)
+        if is_better:
+            best_val_score = selected_val
             patience_counter = 0
             
             # Save model checkpoint
@@ -212,12 +248,13 @@ def run_training(config: Config) -> None:
                 'epoch': epoch,
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
-                'best_val_accuracy': best_val_accuracy,
+                'best_val_metric': best_val_score,
+                'best_metric_name': selected_metric,
                 'config': config.to_dict(),
                 'pooling_backend': config.model.pooling.backend
             }, f'checkpoints/{config.experiment_type}_best.pt')
             
-            logger.info(f"New best model saved with validation accuracy: {best_val_accuracy:.4f}")
+            logger.info(f"New best model saved with validation {selected_metric}: {best_val_score:.4f}")
         else:
             patience_counter += 1
         
@@ -239,7 +276,7 @@ def run_training(config: Config) -> None:
     test_loss, test_metrics = evaluate_model(model, test_loader, device)
     
     logger.info("=== Final Results ===")
-    logger.info(f"Best Validation Accuracy: {best_val_accuracy:.4f}")
+    logger.info(f"Best Validation {selected_metric}: {best_val_score:.4f}")
     logger.info(f"Test Loss: {test_loss:.4f}")
     logger.info(f"Test Accuracy: {test_metrics['accuracy']:.4f}")
     logger.info(f"Test Macro F1: {test_metrics['macro_f1']:.4f}")
@@ -248,7 +285,7 @@ def run_training(config: Config) -> None:
     # Final W&B logging
     if config.wandb.enabled and 'wandb' in globals() and wandb.run is not None:
         wandb.log({
-            'final/best_val_accuracy': best_val_accuracy,
+            f'final/best_val_{selected_metric}': best_val_score,
             'final/test_loss': test_loss,
             'final/test_accuracy': test_metrics['accuracy'],
             'final/test_macro_f1': test_metrics['macro_f1'],
