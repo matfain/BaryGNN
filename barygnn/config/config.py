@@ -480,4 +480,39 @@ class Config:
             # General parameters
             'debug_mode': self.model.debug_mode,
         } 
-        
+
+
+@dataclass
+class OptunaConfig:
+    class Study:
+        name: str
+        direction: str
+        storage: Optional[str] = None
+        n_trials: Optional[int] = None
+        timeout: Optional[Union[int, None]] = None
+        n_workers: Optional[int] = None
+
+    class Output:
+        config_dir: str
+        logs_prefix: str
+
+    class Metric:
+        name: str
+        mode: str
+
+    class Wandb:
+        project_suffix: Optional[str] = None
+        extra_tags: Optional[List[str]] = field(default_factory=list)
+
+    class Pruning:
+        enabled: bool = False
+        pruner: Optional[str] = None
+        warmup_steps: Optional[int] = None
+
+    study: Study
+    base_config: str
+    output: Output
+    metric: Metric
+    wandb: Wandb
+    pruning: Pruning
+    search_space: Dict[str, Any]        
