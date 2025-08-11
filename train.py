@@ -295,6 +295,10 @@ def run_training(config: Config) -> None:
     
     logger.info("Training completed successfully!")
 
+    metrics = val_metrics.copy()
+    metrics['loss'] = val_loss
+    return metrics
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='BaryGNN v2 Configuration-Based Training')
