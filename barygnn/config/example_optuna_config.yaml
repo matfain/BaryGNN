@@ -1,0 +1,55 @@
+# Example Optuna study configuration for BaryGNN
+study:
+  name: barygnn_mutag_opt
+  direction: maximize
+  storage: null  # No persistent storage, in-memory only
+  n_trials: 3
+  timeout: null
+  n_workers: 1  # Number of parallel Optuna workers
+
+base_config: barygnn/config/default_barycentric_config.yaml
+
+output:
+  config_dir: barygnn/config/optuna_configs
+  logs_prefix: optuna_logs
+
+metric:
+  name: accuracy
+  mode: max
+
+wandb:
+  enabled: true
+  project: barygnn
+  project_suffix: optuna
+  extra_tags: [optuna]
+
+pruning:
+  enabled: false
+  pruner: median
+  warmup_steps: 5
+
+search_space:
+  model.hidden_dim:
+    type: categorical
+    choices: [32, 64, 128]
+  model.encoder.num_layers:
+    type: categorical
+    choices: [3, 5, 8]
+  model.pooling.codebook_size:
+    type: categorical
+    choices: [16, 32, 64]
+  model.pooling.epsilon:
+    type: float
+    low: 0.05
+    high: 0.5
+    log: true
+  training.lr:
+    type: float
+    low: 0.0001
+    high: 0.01
+    log: true
+  training.patience:
+    type: int
+    low: 20
+    high: 60
+    step: 10

@@ -11,6 +11,16 @@ from barygnn.config.config import (
     generate_configs
 )
 
+from barygnn.config.optuna_config import (
+    OptunaConfig,
+    OptunaStudyConfig,
+    OptunaMetricConfig,
+    OptunaPruningConfig,
+    OptunaWandbConfig,
+    OptunaOutputConfig,
+    OptunaSearchSpaceItem
+)
+
 __all__ = [
     "Config",
     "ModelConfig",
@@ -21,5 +31,12 @@ __all__ = [
     "DataConfig",
     "TrainingConfig",
     "WandbConfig",
-    "generate_configs"
+    "generate_configs",
+    "OptunaConfig",
+    "OptunaStudyConfig",
+    "OptunaMetricConfig",
+    "OptunaPruningConfig",
+    "OptunaWandbConfig",
+    "OptunaOutputConfig",
+    "OptunaSearchSpaceItem"
 ]

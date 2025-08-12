@@ -29,3 +29,4 @@ data/
 checkpoints/
 sandbox/
 barygnn/config/grid_search_configs/
+barygnn/optuna_outputs/

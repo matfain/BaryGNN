@@ -241,7 +241,8 @@ def run_training(config: Config) -> None:
             patience_counter = 0
             
             # Save model checkpoint
-            os.makedirs('checkpoints', exist_ok=True)
+            checkpoint_dir = getattr(args, 'checkpoint_dir', 'checkpoints')
+            os.makedirs(checkpoint_dir, exist_ok=True)
             
             # Include pooling backend to help with debugging
             torch.save({
@@ -252,7 +253,7 @@ def run_training(config: Config) -> None:
                 'best_metric_name': selected_metric,
                 'config': config.to_dict(),
                 'pooling_backend': config.model.pooling.backend
-            }, f'checkpoints/{config.experiment_type}_best.pt')
+            }, os.path.join(checkpoint_dir, f'{config.experiment_type}_best.pt'))
             
             logger.info(f"New best model saved with validation {selected_metric}: {best_val_score:.4f}")
         else:
@@ -264,7 +265,8 @@ def run_training(config: Config) -> None:
             break
     
     # Load best model for final evaluation
-    checkpoint_path = f'checkpoints/{config.experiment_type}_best.pt'
+    checkpoint_dir = getattr(args, 'checkpoint_dir', 'checkpoints')
+    checkpoint_path = os.path.join(checkpoint_dir, f'{config.experiment_type}_best.pt')
     if os.path.exists(checkpoint_path):
         checkpoint = torch.load(checkpoint_path)
         logger.info(f"Loading best model from {checkpoint_path} (epoch {checkpoint['epoch']})")
