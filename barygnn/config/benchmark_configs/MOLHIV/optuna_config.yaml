@@ -1,0 +1,56 @@
+# Example Optuna study configuration for BaryGNN
+study:
+  name: barygnn_molhiv_opt
+  direction: maximize
+  storage: null  # No persistent storage, in-memory only
+  n_trials: 15
+  timeout: null
+  n_workers: 1  # Number of parallel Optuna workers
+
+base_config: barygnn/config/benchmark_configs/MOLHIV/barycentric_molhiv_config.yaml
+
+
+
+metric:
+  name: accuracy
+  mode: max
+
+wandb:
+  enabled: true
+  project: barygnn_MOLHIV
+  project_suffix: optuna
+  extra_tags: [optuna]
+
+pruning:
+  enabled: false
+  pruner: median
+  warmup_steps: 5
+
+search_space:
+  model.hidden_dim:
+    type: categorical
+    choices: [32, 64, 128]
+  model.encoder.num_layers:
+    type: categorical
+    choices: [3, 5, 8]
+  model.pooling.standard_pooling_method:
+    type: categorical
+    choices: ["global_mean_pool", "global_add_pool", "global_max_pool"]
+  model.pooling.codebook_size:
+    type: categorical
+    choices: [16, 32, 64]
+  model.pooling.epsilon:
+    type: float
+    low: 0.05
+    high: 0.5
+    log: true
+  training.lr:
+    type: float
+    low: 0.0001
+    high: 0.01
+    log: true
+  training.patience:
+    type: int
+    low: 20
+    high: 60
+    step: 10

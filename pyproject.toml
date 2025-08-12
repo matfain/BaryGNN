@@ -19,7 +19,8 @@ dependencies = [
     "pykeops==2.3",         
     "keopscore==2.3",
     "optuna>=3.0.0",
-    "plotly>=5.0.0"
+    "plotly>=5.0.0",
+    "ogb>=1.3.6"
 ]
 
 [build-system]
