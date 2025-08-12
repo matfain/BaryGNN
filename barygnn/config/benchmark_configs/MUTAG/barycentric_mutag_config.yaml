@@ -1,0 +1,78 @@
+experiment_type: "MUTAG"
+seed: 42
+
+model:
+  version: "v2"
+  hidden_dim: 64
+  debug_mode: false
+  
+  encoder:
+    type: "GIN"
+    in_dim: 0  # Will be overridden by dataset
+    num_layers: 3
+    dropout: 0.5
+    multi_head_type: "efficient"
+    shared_layers: 1
+    distribution_size: 32
+    projection_depth: 2
+    projection_width_factor: 1.0
+  
+  pooling:
+    backend: "barycenter"
+    standard_pooling_method: "global_mean_pool"
+    readout_type: "weighted_mean"  # "weighted_mean" or "concat"
+    codebook_size: 16
+    epsilon: 0.2
+    p: 2
+    scaling: 0.9
+  
+  classification:
+    type: "enhanced"  # "simple", "enhanced", "adaptive", "deep_residual"
+    hidden_dims: [256, 128, 64]
+    dropout: 0.2
+    activation: "relu"
+    norm_type: "batch"
+    depth_factor: 1.0  # For AdaptiveMLP
+    width_factor: 1.0  # For AdaptiveMLP
+  
+  regularization:
+    enabled: true
+    type: "variance"  # "variance", "centroid", "coherence"
+    lambda_reg: 0.01
+
+data:
+  name: "MUTAG"
+  batch_size: 32
+  num_workers: 4
+  val_ratio: 0.1
+  test_ratio: 0.1
+  normalize_features: true
+  add_self_loops: true
+
+training:
+  num_epochs: 300
+  lr: 0.001
+  weight_decay: 0.0001
+  patience: 50
+  metric: "accuracy"
+  device: "cuda"
+  gradient_clip: 1.0
+  
+  scheduler: "plateau"
+  scheduler_params:
+    mode: "max"
+    factor: 0.5
+    patience: 10
+    min_lr: 0.00001
+
+wandb:
+  enabled: true
+  api_key: 1cf1eb10b27e2214f8d38aa573fdacb7af0ed6c2
+  project: "barygnn_MUTAG"
+  entity: null
+  tags: []
+  notes: null
+  save_code: true
+  log_gradients: false
+  log_parameters: true
+  watch_model: true

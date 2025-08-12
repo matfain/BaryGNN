@@ -17,7 +17,6 @@ from barygnn.config.optuna_config import (
     OptunaMetricConfig,
     OptunaPruningConfig,
     OptunaWandbConfig,
-    OptunaOutputConfig,
     OptunaSearchSpaceItem
 )
 
@@ -37,6 +36,5 @@ __all__ = [
     "OptunaMetricConfig",
     "OptunaPruningConfig",
     "OptunaWandbConfig",
-    "OptunaOutputConfig",
     "OptunaSearchSpaceItem"
 ]

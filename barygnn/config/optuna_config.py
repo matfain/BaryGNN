@@ -49,12 +49,6 @@ class OptunaWandbConfig:
     extra_tags: List[str] = field(default_factory=lambda: ["optuna"])
 
 
-@dataclass
-class OptunaOutputConfig:
-    """Configuration for output directories."""
-    
-    config_dir: str = "barygnn/config/optuna_configs"
-    logs_prefix: str = "optuna_logs"
 
 
 @dataclass
@@ -76,7 +70,6 @@ class OptunaConfig:
     
     study: OptunaStudyConfig = field(default_factory=OptunaStudyConfig)
     base_config: str = "barygnn/config/default_config.yaml"
-    output: OptunaOutputConfig = field(default_factory=OptunaOutputConfig)
     metric: OptunaMetricConfig = field(default_factory=OptunaMetricConfig)
     wandb: OptunaWandbConfig = field(default_factory=OptunaWandbConfig)
     pruning: OptunaPruningConfig = field(default_factory=OptunaPruningConfig)
@@ -123,12 +116,7 @@ class OptunaConfig:
             extra_tags=wandb_dict.get("extra_tags", ["optuna"])
         )
         
-        # Create output config
-        output_dict = config_dict.get("output", {})
-        output_config = OptunaOutputConfig(
-            config_dir=output_dict.get("config_dir", "barygnn/config/optuna_configs"),
-            logs_prefix=output_dict.get("logs_prefix", "optuna_logs")
-        )
+
         
         # Create search space
         search_space = {}
@@ -160,7 +148,6 @@ class OptunaConfig:
         return cls(
             study=study_config,
             base_config=config_dict.get("base_config", "barygnn/config/default_config.yaml"),
-            output=output_config,
             metric=metric_config,
             wandb=wandb_config,
             pruning=pruning_config,
@@ -201,10 +188,6 @@ class OptunaConfig:
                 "n_workers": self.study.n_workers
             },
             "base_config": self.base_config,
-            "output": {
-                "config_dir": self.output.config_dir,
-                "logs_prefix": self.output.logs_prefix
-            },
             "metric": {
                 "name": self.metric.name,
                 "mode": self.metric.mode
