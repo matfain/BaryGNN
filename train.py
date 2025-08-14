@@ -8,6 +8,13 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 import wandb
 import argparse
 
+# Fix for PyTorch 2.6+ weights_only default change affecting OGB datasets
+original_torch_load = torch.load
+def patched_torch_load(*args, **kwargs):
+    kwargs.setdefault('weights_only', False)
+    return original_torch_load(*args, **kwargs)
+torch.load = patched_torch_load
+
 from barygnn import create_barygnn, Config, load_dataset, evaluate_model
 
 
@@ -268,7 +275,7 @@ def run_training(config: Config) -> None:
     checkpoint_dir = getattr(args, 'checkpoint_dir', 'checkpoints')
     checkpoint_path = os.path.join(checkpoint_dir, f'{config.experiment_type}_best.pt')
     if os.path.exists(checkpoint_path):
-        checkpoint = torch.load(checkpoint_path)
+        checkpoint = torch.load(checkpoint_path, weights_only=False)
         logger.info(f"Loading best model from {checkpoint_path} (epoch {checkpoint['epoch']})")
         logger.info(f"Model config: {config.model.pooling.backend}, Checkpoint pooling: {checkpoint.get('pooling_backend', 'unknown')}")
         model.load_state_dict(checkpoint['model_state_dict'])
