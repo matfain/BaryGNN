@@ -1,5 +1,6 @@
 import os
 import yaml
+import numpy as np
 from dataclasses import dataclass, field, asdict
 from typing import Dict, List, Optional, Union, Any, Literal
 
@@ -175,6 +176,11 @@ class DataConfig:
     # Data preprocessing
     normalize_features: bool = True
     add_self_loops: bool = True
+    
+    # Cross-validation specific fields
+    cross_val_mode: bool = False
+    custom_train_indices: Optional[np.ndarray] = None
+    custom_test_indices: Optional[np.ndarray] = None
 
 
 @dataclass
