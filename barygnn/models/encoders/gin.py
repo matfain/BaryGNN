@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_geometric.nn import GINConv, global_mean_pool
+from torch_geometric.nn import GINConv
 
 from barygnn.models.encoders.base import BaseEncoder
 
@@ -17,6 +17,8 @@ class GIN(BaseEncoder):
         hidden_dim: int,
         num_layers: int = 3,
         dropout: float = 0.5,
+        use_categorical_encoding: bool = False,
+        categorical_embed_dim: int = 64,
     ):
         """
         Initialize GIN encoder.
@@ -26,16 +28,26 @@ class GIN(BaseEncoder):
             hidden_dim: Hidden dimension
             num_layers: Number of GIN layers
             dropout: Dropout probability
+            use_categorical_encoding: Whether to use categorical encoding for molecular features
+            categorical_embed_dim: Embedding dimension for categorical features
         """
-        super(GIN, self).__init__()
+        super(GIN, self).__init__(
+            in_dim=in_dim,
+            hidden_dim=hidden_dim,
+            use_categorical_encoding=use_categorical_encoding,
+            categorical_embed_dim=categorical_embed_dim
+        )
         
         self.in_dim = in_dim
         self.hidden_dim = hidden_dim
         self.num_layers = num_layers
         self.dropout = dropout
         
+        # Determine actual input dimension based on categorical encoding
+        actual_in_dim = categorical_embed_dim if use_categorical_encoding else in_dim
+        
         # Input projection
-        self.input_proj = nn.Linear(in_dim, hidden_dim)
+        self.input_proj = nn.Linear(actual_in_dim, hidden_dim)
         
         # GIN layers
         self.convs = nn.ModuleList()
@@ -66,6 +78,9 @@ class GIN(BaseEncoder):
         Returns:
             node_embeddings: Node embeddings [num_nodes, hidden_dim]
         """
+        # Apply categorical encoding if enabled
+        x = self._preprocess_features(x)
+        
         # Project input features
         x = self.input_proj(x)
         

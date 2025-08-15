@@ -1,6 +1,6 @@
 import os
 import yaml
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from typing import Dict, List, Optional, Union, Any, Literal
 
 from pathlib import Path
@@ -92,7 +92,7 @@ class EncoderConfig:
     distribution_size: int = 32  # Number of vectors per node (moved from pooling)
     projection_depth: int = 2  # Number of layers in each projection head (efficient only)
     projection_width_factor: float = 1.0  # Width multiplier for hidden layers in projection head (efficient only)
-
+    use_categorical_encoding: bool = False
 
 @dataclass
 class PoolingConfig:
@@ -348,18 +348,7 @@ class Config:
                 "version": self.model.version,
                 "hidden_dim": self.model.hidden_dim,
                 "debug_mode": self.model.debug_mode,
-                "encoder": {
-                    "type": self.model.encoder.type,
-                    "in_dim": self.model.encoder.in_dim,
-                    "num_layers": self.model.encoder.num_layers,
-                    "dropout": self.model.encoder.dropout,
-                    "aggr": self.model.encoder.aggr,
-                    "multi_head_type": self.model.encoder.multi_head_type,
-                    "shared_layers": self.model.encoder.shared_layers,
-                    "distribution_size": self.model.encoder.distribution_size,
-                    "projection_depth": self.model.encoder.projection_depth,
-                    "projection_width_factor": self.model.encoder.projection_width_factor,
-                },
+                "encoder": asdict(self.model.encoder),
                 "pooling": {
                     "backend": self.model.pooling.backend,
                     "standard_pooling_method": self.model.pooling.standard_pooling_method,
@@ -369,37 +358,10 @@ class Config:
                         "p": self.model.pooling.p,
                         "scaling": self.model.pooling.scaling} if self.model.pooling.backend == "barycenter" else {})
                 },
-                "classification": {
-                    "type": self.model.classification.type,
-                    "dropout": self.model.classification.dropout,
-                    "activation": self.model.classification.activation,
-                    "norm_type": self.model.classification.norm_type,
-                    "hidden_dims": self.model.classification.hidden_dims,
-                    "use_residual": self.model.classification.use_residual,
-                    "residual_type": self.model.classification.residual_type,
-                    "final_dropout": self.model.classification.final_dropout,
-                    "depth_factor": self.model.classification.depth_factor,
-                    "width_factor": self.model.classification.width_factor,
-                    "hidden_dim": self.model.classification.hidden_dim,
-                    "num_blocks": self.model.classification.num_blocks,
-                    "num_layers": self.model.classification.num_layers,
-                },
-                "regularization": {
-                    "enabled": self.model.regularization.enabled,
-                    "type": self.model.regularization.type,
-                    "lambda_reg": self.model.regularization.lambda_reg,
-                },
+                "classification": asdict(self.model.classification),
+                "regularization": asdict(self.model.regularization),
             },
-            "data": {
-                "name": self.data.name,
-                "batch_size": self.data.batch_size,
-                "num_workers": self.data.num_workers,
-                "split_seed": self.data.split_seed,
-                "val_ratio": self.data.val_ratio,
-                "test_ratio": self.data.test_ratio,
-                "normalize_features": self.data.normalize_features,
-                "add_self_loops": self.data.add_self_loops,
-            },
+            "data": asdict(self.data),
             "training": {
                 "num_epochs": self.training.num_epochs,
                 "lr": self.training.lr,
@@ -416,18 +378,7 @@ class Config:
                 "focal_alpha": self.training.focal_alpha,
                 "focal_gamma": self.training.focal_gamma,
             },
-            "wandb": {
-                "enabled": self.wandb.enabled,
-                "project": self.wandb.project,
-                "entity": self.wandb.entity,
-                "api_key": self.wandb.api_key,
-                "tags": self.wandb.tags,
-                "notes": self.wandb.notes,
-                "save_code": self.wandb.save_code,
-                "log_gradients": self.wandb.log_gradients,
-                "log_parameters": self.wandb.log_parameters,
-                "watch_model": self.wandb.watch_model,
-            },
+            "wandb": asdict(self.wandb),
         }
     
     def get_model_kwargs(self) -> Dict[str, Any]:
@@ -477,6 +428,7 @@ class Config:
             'reg_type': self.model.regularization.type,
             'reg_lambda': self.model.regularization.lambda_reg,
             
+            'use_categorical_encoding': self.model.encoder.use_categorical_encoding,
             # General parameters
             'debug_mode': self.model.debug_mode,
         } 

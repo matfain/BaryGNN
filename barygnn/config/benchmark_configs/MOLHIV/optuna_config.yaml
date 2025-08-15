@@ -3,21 +3,19 @@ study:
   name: barygnn_molhiv_opt
   direction: maximize
   storage: null  # No persistent storage, in-memory only
-  n_trials: 15
+  n_trials: 10
   timeout: null
   n_workers: 1  # Number of parallel Optuna workers
 
 base_config: barygnn/config/benchmark_configs/MOLHIV/barycentric_molhiv_config.yaml
 
-
-
 metric:
-  name: accuracy
+  name: roc_auc
   mode: max
 
 wandb:
   enabled: true
-  project: barygnn_MOLHIV
+  project: barygnn_MOLHIV_optuna
   project_suffix: optuna
   extra_tags: [optuna]
 

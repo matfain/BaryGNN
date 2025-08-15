@@ -17,9 +17,11 @@ venv/
 # Ignore SLURM and shell scripts
 *.sh
 
-# Ignore OS files
+# Ignore OS files and cache files
 .DS_Store
 Thumbs.db 
+outdated_cache_ogb
+outdated_cache_outdated
 
 # Ignoe directories
 anaconda3/

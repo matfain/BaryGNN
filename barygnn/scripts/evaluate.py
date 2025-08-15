@@ -20,20 +20,28 @@ def evaluate_model(model, loader, device):
         for batch in loader:
             batch = batch.to(device)
             
-            try:
+            if True: #try:
                 logits = model(batch)
-                loss = F.cross_entropy(logits, batch.y)
+                # Sanitize targets to be 1D Long indices
+                targets = batch.y
+                if targets is None:
+                    raise ValueError("Batch has no targets 'y'")
+                if targets.dim() > 1 and targets.size(-1) == 1:
+                    targets = targets.squeeze(-1)
+                if targets.dtype != torch.long:
+                    targets = targets.long()
+                loss = F.cross_entropy(logits, targets)
                 total_loss += loss.item()
                 
                 pred = logits.argmax(dim=1)
                 all_preds.extend(pred.cpu().detach().numpy())
-                all_labels.extend(batch.y.cpu().detach().numpy()) 
+                all_labels.extend(targets.cpu().detach().numpy()) 
                 all_logits.extend(F.softmax(logits, dim=1).cpu().detach().numpy())
                 
                 
-            except Exception as e:
-                logger.error(f"Error in evaluation batch: {str(e)}")
-                continue
+            # except Exception as e:
+            #     logger.error(f"Error in evaluation batch: {str(e)}")
+            #     continue
     
     if len(all_preds) == 0:
         return 0, {"accuracy": 0, "macro_f1": 0, "roc_auc": 0}

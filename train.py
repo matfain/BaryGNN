@@ -63,7 +63,17 @@ def train_epoch(model, train_loader, optimizer, device, clip_grad_norm=None):
             logits = model(batch)
             
             # Classification loss
-            classification_loss = F.cross_entropy(logits, batch.y)
+            # Ensure targets are 1D Long indices as required by cross_entropy
+            targets = batch.y
+            if targets is None:
+                raise ValueError("Batch has no targets 'y'")
+            # If targets have extra dimension [N,1], squeeze it
+            if targets.dim() > 1 and targets.size(-1) == 1:
+                targets = targets.squeeze(-1)
+            # If targets are float/bool, cast to long class indices
+            if targets.dtype != torch.long:
+                targets = targets.long()
+            classification_loss = F.cross_entropy(logits, targets)
             
             # Distribution regularization loss
             regularization_loss = model.compute_regularization_loss()
@@ -87,8 +97,8 @@ def train_epoch(model, train_loader, optimizer, device, clip_grad_norm=None):
             
             # Compute accuracy
             pred = logits.argmax(dim=1)
-            total_correct += (pred == batch.y).sum().item()
-            total_samples += batch.y.size(0)
+            total_correct += (pred == targets).sum().item()
+            total_samples += targets.size(0)
             
         except Exception as e:
             logger.error(f"Error in training batch {batch_idx}: {str(e)}")
@@ -141,6 +151,7 @@ def run_training(config: Config) -> None:
     train_loader, val_loader, test_loader, num_features, num_classes = load_dataset(
         config.data.name, 
         batch_size=config.data.batch_size,
+        num_workers=config.data.num_workers,
         split_seed=config.data.split_seed
     )
     
@@ -193,6 +204,7 @@ def run_training(config: Config) -> None:
     best_val_score = float('-inf') if to_maximize else float('inf')
     patience_counter = 0
     
+    logger.info(f"num workers: {train_loader.num_workers}")
     logger.info("Starting training...")
     
     for epoch in range(config.training.num_epochs):

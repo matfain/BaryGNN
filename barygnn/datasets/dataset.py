@@ -4,15 +4,11 @@ import logging
 from torch_geometric.datasets import TUDataset
 from torch_geometric.loader import DataLoader
 from torch_geometric.transforms import NormalizeFeatures, OneHotDegree, Compose
+import torch_geometric.transforms as T
 from sklearn.model_selection import train_test_split
 from typing import Dict, List, Tuple, Optional
+from ogb.graphproppred import PygGraphPropPredDataset
 
-# Import OGB datasets if available
-try:
-    from ogb.graphproppred import PygGraphPropPredDataset, Evaluator
-    HAS_OGB = True
-except ImportError:
-    HAS_OGB = False
 
 logger = logging.getLogger(__name__)
 
@@ -49,28 +45,27 @@ def load_dataset(
     
     # Load dataset
     if name.startswith("ogbg"):
-        # Check if OGB is installed
-        if not HAS_OGB:
-            raise ImportError(
-                "OGB package is required to use OGB datasets. "
-                "Install it with: pip install ogb"
-            )
-            
         # OGB dataset
         logger.info(f"Loading OGB dataset: {name}")
-        dataset = PygGraphPropPredDataset(name=name, root="data")
-        split_idx = dataset.get_split_idx()
-        train_idx, val_idx, test_idx = split_idx["train"], split_idx["valid"], split_idx["test"]
         
+        # Apply transform for ogbg-molhiv dataset
+        
+        dataset = PygGraphPropPredDataset(name=name, root="data")
+        split_idx = dataset.get_idx_split() 
+
+        train_idx, val_idx, test_idx = split_idx["train"], split_idx["valid"], split_idx["test"]
         train_dataset = dataset[train_idx]
         val_dataset = dataset[val_idx]
         test_dataset = dataset[test_idx]
+        
         
         # Get dataset information
         num_features = dataset[0].x.shape[1] if hasattr(dataset[0], 'x') and dataset[0].x is not None else 0
         num_classes = dataset.num_classes
         
         logger.info(f"OGB Dataset {name}: {len(dataset)} graphs, {num_features} features, {num_classes} classes")
+
+        
     else:
         # TU dataset
         # Special handling for IMDB datasets which have no node features

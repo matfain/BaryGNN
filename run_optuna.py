@@ -142,8 +142,7 @@ def objective(trial, base_config_path, search_space, metric_name, metric_directi
     file_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
     logger.addHandler(file_handler)
     
-    try:
-        
+    try:      
         # Set up arguments for run_training
         class Args:
             def __init__(self, config_path, log_dir, checkpoint_dir):

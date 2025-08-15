@@ -1,4 +1,4 @@
-experiment_type: "MOLHIV"
+experiment_type: "MOLHIV_64"
 seed: 42
 
 model:
@@ -16,6 +16,7 @@ model:
     distribution_size: 32
     projection_depth: 2
     projection_width_factor: 1.0
+    use_categorical_encoding: true
   
   pooling:
     backend: "barycenter"
@@ -42,8 +43,8 @@ model:
 
 data:
   name: "ogbg-molhiv"
-  batch_size: 32
-  num_workers: 4
+  batch_size: 64
+  num_workers: 8
   val_ratio: 0.1
   test_ratio: 0.1
   normalize_features: true
@@ -68,7 +69,7 @@ training:
 wandb:
   enabled: true
   api_key: 1cf1eb10b27e2214f8d38aa573fdacb7af0ed6c2
-  project: "barygnn_MOLHIV"
+  project: "barygnn_MOLHIV_tryout_2"
   entity: null
   tags: []
   notes: null

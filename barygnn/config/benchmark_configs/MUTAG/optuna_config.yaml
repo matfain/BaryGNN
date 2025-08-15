@@ -3,7 +3,7 @@ study:
   name: barygnn_mutag_opt
   direction: maximize
   storage: null  # No persistent storage, in-memory only
-  n_trials: 30
+  n_trials: 60
   timeout: null
   n_workers: 1  # Number of parallel Optuna workers
 
@@ -17,7 +17,7 @@ metric:
 
 wandb:
   enabled: true
-  project: barygnn_MUTAG
+  project: barygnn_MUTAG_opt_60
   project_suffix: optuna
   extra_tags: [optuna]
 

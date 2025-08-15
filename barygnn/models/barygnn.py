@@ -46,6 +46,11 @@ class BaryGNN(nn.Module):
         multi_head_type: str = "efficient",  # "full" or "efficient"
         shared_layers: int = 1,
         
+        # Molecular dataset parameters
+        # dataset_name: str = "",
+        use_categorical_encoding: bool = False,
+        categorical_embed_dim: int = 64,  # OGB AtomEncoder standard
+        
         # Pooling parameters  
         sinkhorn_epsilon: float = 0.2,
         p: int = 2,
@@ -113,6 +118,8 @@ class BaryGNN(nn.Module):
         logger.info(f"Initializing BaryGNN with:")
         logger.info(f"  Architecture: {in_dim} -> {hidden_dim} -> {codebook_size} atoms -> {num_classes}")
         logger.info(f"  Encoder: {encoder_type} ({multi_head_type} multi-head, {distribution_size} heads)")
+        if use_categorical_encoding:
+            logger.info(f"  Atom Encoding: Enabled (OGB AtomEncoder, embed_dim={categorical_embed_dim})")
         logger.info(f"  Pooling: GeomLoss (ε={sinkhorn_epsilon})")
         logger.info(f"  Classifier: {classifier_type}")
         logger.info(f"  Regularization: {reg_type if use_distribution_reg else 'None'} (λ={reg_lambda})")
@@ -126,7 +133,9 @@ class BaryGNN(nn.Module):
             num_heads=distribution_size,
             shared_layers=shared_layers,
             num_layers=encoder_layers,
-            dropout=encoder_dropout
+            dropout=encoder_dropout,
+            use_categorical_encoding=use_categorical_encoding,
+            categorical_embed_dim=categorical_embed_dim
         )
         
         # Pooling configuration
