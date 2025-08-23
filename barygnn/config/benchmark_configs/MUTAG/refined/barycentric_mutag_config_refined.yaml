@@ -1,4 +1,4 @@
-experiment_type: &experiment_name "MUTAG_Opt_Real_1"
+experiment_type: &experiment_name "MUTAG_Opt_Refine_1"
 seed: 42
 
 model:
