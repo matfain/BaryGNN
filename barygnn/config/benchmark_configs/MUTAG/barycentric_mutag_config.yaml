@@ -1,5 +1,5 @@
-experiment_type: "MUTAG_Opt_Real_1"
-seed: 42
+experiment_type: &experiment_name "MUTAG_Opt_Real_1"
+seed: 421
 
 model:
   version: "v2"
@@ -68,7 +68,7 @@ training:
 wandb:
   enabled: true
   api_key: 1cf1eb10b27e2214f8d38aa573fdacb7af0ed6c2
-  project: "MUTAG_Opt_Real_1"
+  project: *experiment_name
   entity: null
   tags: []
   notes: null
