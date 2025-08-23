@@ -281,7 +281,9 @@ def run_optuna_study(optuna_config_path, log_dir=None, timestamp=None):
     
     # Create study - use in-memory storage if not specified
     storage = optuna_config["study"].get("storage")
-    
+    if storage:
+        storage = f"{storage}/{optuna_config['study']['name']}.db"
+
     study = optuna.create_study(
         study_name=optuna_config["study"]["name"],
         direction=optuna_config["study"]["direction"],

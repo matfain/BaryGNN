@@ -1,4 +1,4 @@
-experiment_type: "IMDB-M"
+experiment_type: &study_name IMDB_M_Opt_Real_1_tryout2
 seed: 42
 
 model:
@@ -68,7 +68,7 @@ training:
 wandb:
   enabled: true
   api_key: 1cf1eb10b27e2214f8d38aa573fdacb7af0ed6c2
-  project: "barygnn_IMDB-M"
+  project: *study_name
   entity: null
   tags: []
   notes: null

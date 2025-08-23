@@ -1,8 +1,8 @@
 # Example Optuna study configuration for BaryGNN
 study:
-  name: PROTEINS_Opt_Real_1
+  name: &study_name PROTEINS_Opt_Real_1_tryout2
   direction: maximize
-  storage: null  # No persistent storage, in-memory only
+  storage: sqlite:///optuna_studies
   n_trials: 60
   timeout: null
   n_workers: 1  # Number of parallel Optuna workers
@@ -16,7 +16,7 @@ metric:
 
 wandb:
   enabled: true
-  project: PROTEINS_Opt_Real_1
+  project: *study_name
   project_suffix: optuna
   extra_tags: [optuna]
 

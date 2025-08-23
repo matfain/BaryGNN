@@ -1,9 +1,9 @@
 # Example Optuna study configuration for BaryGNN
 study:
-  name: barygnn_imdb_m_opt
+  name: &study_name IMDB_M_Opt_Real_1_tryout2
   direction: maximize
-  storage: null  # No persistent storage, in-memory only
-  n_trials: 15
+  storage: sqlite:///optuna_studies
+  n_trials: 60
   timeout: null
   n_workers: 1  # Number of parallel Optuna workers
 
@@ -17,7 +17,7 @@ metric:
 
 wandb:
   enabled: true
-  project: barygnn_IMDB-M
+  project: *study_name
   project_suffix: optuna
   extra_tags: [optuna]
 

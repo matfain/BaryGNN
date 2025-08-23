@@ -1,4 +1,4 @@
-experiment_type: "ENZYMES_Opt_Real_1"
+experiment_type: &type ENZYMES_Opt_Real_1_tryout2
 seed: 42
 
 model:
@@ -68,7 +68,7 @@ training:
 wandb:
   enabled: true
   api_key: 1cf1eb10b27e2214f8d38aa573fdacb7af0ed6c2
-  project: "ENZYMES_Opt_Real_1"
+  project: *type
   entity: null
   tags: []
   notes: null

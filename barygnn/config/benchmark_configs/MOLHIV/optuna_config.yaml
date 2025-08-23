@@ -1,6 +1,6 @@
 # Example Optuna study configuration for BaryGNN
 study:
-  name: barygnn_molhiv_opt
+  name: MOLHIV_Opt_Real_1
   direction: maximize
   storage: null  # No persistent storage, in-memory only
   n_trials: 10
@@ -15,7 +15,7 @@ metric:
 
 wandb:
   enabled: true
-  project: barygnn_MOLHIV_optuna
+  project: MOLHIV_Opt_Real_1
   project_suffix: optuna
   extra_tags: [optuna]
 
