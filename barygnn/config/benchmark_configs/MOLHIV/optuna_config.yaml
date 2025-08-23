@@ -24,16 +24,43 @@ pruning:
   pruner: median
   warmup_steps: 5
 
+
 search_space:
+  model.encoder.type:
+    type: categorical
+    choices: ["GIN", "GraphSAGE"]
   model.hidden_dim:
     type: categorical
     choices: [32, 64, 128]
   model.encoder.num_layers:
     type: categorical
     choices: [3, 5, 8]
+  model.encoder.dropout:
+    type: float
+    low: 0.001
+    high: 0.5
+    log: true
+  model.encoder.shared_layers:
+    type: categorical
+    choices: [1, 2]
+  model.encoder.distribution_size:
+    type: categorical
+    choices: [16, 32, 64]
+  model.encoder.projection_depth:
+    type: categorical
+    choices: [1, 2, 3]
+  model.encoder.projection_width_factor:
+    type: float
+    low: 0.5
+    high: 2.0
+    log: true
+
   model.pooling.standard_pooling_method:
     type: categorical
     choices: ["global_mean_pool", "global_add_pool", "global_max_pool"]
+  model.pooling.readout_type:
+    type: categorical
+    choices: ["weighted_mean", "concat"]
   model.pooling.codebook_size:
     type: categorical
     choices: [16, 32, 64]
@@ -42,13 +69,15 @@ search_space:
     low: 0.05
     high: 0.5
     log: true
-  training.lr:
+
+  model.regularization.enabled:
+    type: categorical
+    choices: [true, false]
+  model.regularization.type:
+    type: categorical
+    choices: ["variance", "centroid", "coherence"]
+  model.regularization.lambda_reg:
     type: float
-    low: 0.0001
-    high: 0.01
+    low: 0.001
+    high: 0.2
     log: true
-  training.patience:
-    type: int
-    low: 20
-    high: 60
-    step: 10
