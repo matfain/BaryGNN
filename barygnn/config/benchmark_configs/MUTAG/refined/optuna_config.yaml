@@ -1,6 +1,6 @@
 # Example Optuna study configuration for BaryGNN
 study:
-  name: &study_name MUTAG_Opt_Refine_1
+  name: &study_name MUTAG_Opt_Refine_2
   direction: maximize
   storage: sqlite:///optuna_studies
   n_trials: 60
