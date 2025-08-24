@@ -1,15 +1,13 @@
 # Example Optuna study configuration for BaryGNN
 study:
-  name: MUTAG_Opt_Real_1
+  name: &study_name MUTAG_Opt_Refine_1
   direction: maximize
-  storage: sqlite:///optuna_studies
+  storage: sqlite:///optuna_studies  # No persistent storage, in-memory only
   n_trials: 60
   timeout: null
   n_workers: 1  # Number of parallel Optuna workers
 
-base_config: barygnn/config/benchmark_configs/MUTAG/barycentric_mutag_config.yaml
-
-
+base_config: barygnn/config/benchmark_configs/MUTAG/refined/barycentric_mutag_config.yaml
 
 metric:
   name: accuracy
@@ -17,7 +15,7 @@ metric:
 
 wandb:
   enabled: true
-  project: MUTAG_Opt_Real_1
+  project: *study_name
   project_suffix: optuna
   extra_tags: [optuna]
 
@@ -38,7 +36,7 @@ search_space:
     choices: [3, 5, 8]
   model.encoder.dropout:
     type: float
-    low: 0.001
+    low: 0.1
     high: 0.5
     log: true
   model.encoder.shared_layers:
@@ -49,10 +47,10 @@ search_space:
     choices: [16, 32, 64]
   model.encoder.projection_depth:
     type: categorical
-    choices: [1, 2, 3]
+    choices: [3, 3]
   model.encoder.projection_width_factor:
     type: float
-    low: 0.5
+    low: 1.0
     high: 2.0
     log: true
 
@@ -64,11 +62,11 @@ search_space:
     choices: ["weighted_mean", "concat"]
   model.pooling.codebook_size:
     type: categorical
-    choices: [16, 32, 64]
+    choices: [16, 32]
   model.pooling.epsilon:
     type: float
     low: 0.05
-    high: 0.5
+    high: 0.2
     log: true
 
   model.regularization.enabled:
@@ -96,6 +94,6 @@ search_space:
     log: true
   training.patience:
     type: int
-    low: 10
-    high: 50
+    low: 30
+    high: 100
     step: 10

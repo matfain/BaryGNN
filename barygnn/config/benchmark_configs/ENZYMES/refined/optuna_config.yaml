@@ -1,15 +1,13 @@
 # Example Optuna study configuration for BaryGNN
 study:
-  name: &study_name MUTAG_Opt_Refine_1
+  name: &study_name ENZYMES_Opt_Real_Refined_1
   direction: maximize
-  storage: null  # No persistent storage, in-memory only
+  storage: sqlite:///optuna_studies
   n_trials: 60
   timeout: null
   n_workers: 1  # Number of parallel Optuna workers
 
-base_config: barygnn/config/benchmark_configs/MUTAG/barycentric_mutag_config.yaml
-
-
+base_config: barygnn/config/benchmark_configs/ENZYMES/refined/barycentric_enzymes_config.yaml
 
 metric:
   name: accuracy
@@ -29,16 +27,16 @@ pruning:
 search_space:
   model.encoder.type:
     type: categorical
-    choices: ["GIN", "GraphSAGE"]
+    choices: ["GraphSAGE"]
   model.hidden_dim:
     type: categorical
     choices: [32, 64, 128]
   model.encoder.num_layers:
     type: categorical
-    choices: [3, 5, 8]
+    choices: [4, 5, 6]
   model.encoder.dropout:
     type: float
-    low: 0.1
+    low: 0.01
     high: 0.5
     log: true
   model.encoder.shared_layers:
@@ -49,26 +47,26 @@ search_space:
     choices: [16, 32, 64]
   model.encoder.projection_depth:
     type: categorical
-    choices: [3, 3]
+    choices: [1, 2, 3]
   model.encoder.projection_width_factor:
     type: float
-    low: 1.0
+    low: 0.5
     high: 2.0
     log: true
 
   model.pooling.standard_pooling_method:
     type: categorical
-    choices: ["global_mean_pool", "global_add_pool", "global_max_pool"]
+    choices: ["global_mean_pool", "global_add_pool"]
   model.pooling.readout_type:
     type: categorical
     choices: ["weighted_mean", "concat"]
   model.pooling.codebook_size:
     type: categorical
-    choices: [16, 32]
+    choices: [16, 32, 64]
   model.pooling.epsilon:
     type: float
-    low: 0.05
-    high: 0.2
+    low: 0.1
+    high: 0.5
     log: true
 
   model.regularization.enabled:
@@ -76,26 +74,26 @@ search_space:
     choices: [true, false]
   model.regularization.type:
     type: categorical
-    choices: ["variance", "centroid", "coherence"]
+    choices: ["variance", "centroid"]
   model.regularization.lambda_reg:
     type: float
-    low: 0.001
+    low: 0.01
     high: 0.2
     log: true
 
 
   training.lr:
     type: float
-    low: 0.0001
-    high: 0.01
+    low: 0.003
+    high: 0.006
     log: true
   training.weight_decay:
     type: float
-    low: 0.001
-    high: 0.01
-    log: true
+    low: 0.004
+    high: 0.009
+    log: false
   training.patience:
     type: int
     low: 30
-    high: 100
-    step: 10
+    high: 45
+    step: 5

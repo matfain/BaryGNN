@@ -1,5 +1,5 @@
 experiment_type: &experiment_name "MUTAG_Opt_Refine_1"
-seed: 42
+seed: 421
 
 model:
   version: "v2"

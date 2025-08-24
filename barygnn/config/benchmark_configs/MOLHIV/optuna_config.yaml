@@ -2,7 +2,7 @@
 study:
   name: MOLHIV_Opt_Real_1
   direction: maximize
-  storage: null  # No persistent storage, in-memory only
+  storage: sqlite:///optuna_studies
   n_trials: 10
   timeout: null
   n_workers: 1  # Number of parallel Optuna workers

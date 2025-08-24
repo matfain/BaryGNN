@@ -286,6 +286,15 @@ class Config:
             )
 
         def convert_data(data_dict):
+            # Handle custom indices conversion from lists back to NumPy arrays
+            if "custom_train_indices" in data_dict and data_dict["custom_train_indices"] is not None:
+                if isinstance(data_dict["custom_train_indices"], list):
+                    data_dict["custom_train_indices"] = np.array(data_dict["custom_train_indices"], dtype=np.int64)
+            
+            if "custom_test_indices" in data_dict and data_dict["custom_test_indices"] is not None:
+                if isinstance(data_dict["custom_test_indices"], list):
+                    data_dict["custom_test_indices"] = np.array(data_dict["custom_test_indices"], dtype=np.int64)
+            
             return DataConfig(**data_dict)
 
         def convert_training(training_dict):
