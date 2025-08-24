@@ -27,8 +27,6 @@ pruning:
   warmup_steps: 5
 
 search_space:
- 
-search_space:
   model.encoder.type:
     type: categorical
     choices: ["GIN", "GraphSAGE"]
@@ -40,7 +38,7 @@ search_space:
     choices: [3, 5, 8]
   model.encoder.dropout:
     type: float
-    low: 0.001
+    low: 0.1
     high: 0.5
     log: true
   model.encoder.shared_layers:
@@ -51,10 +49,10 @@ search_space:
     choices: [16, 32, 64]
   model.encoder.projection_depth:
     type: categorical
-    choices: [1, 2, 3]
+    choices: [3, 3]
   model.encoder.projection_width_factor:
     type: float
-    low: 0.5
+    low: 1.0
     high: 2.0
     log: true
 
@@ -66,11 +64,11 @@ search_space:
     choices: ["weighted_mean", "concat"]
   model.pooling.codebook_size:
     type: categorical
-    choices: [16, 32, 64]
+    choices: [16, 32]
   model.pooling.epsilon:
     type: float
     low: 0.05
-    high: 0.5
+    high: 0.2
     log: true
 
   model.regularization.enabled:
@@ -84,3 +82,20 @@ search_space:
     low: 0.001
     high: 0.2
     log: true
+
+
+  training.lr:
+    type: float
+    low: 0.0001
+    high: 0.01
+    log: true
+  training.weight_decay:
+    type: float
+    low: 0.001
+    high: 0.01
+    log: true
+  training.patience:
+    type: int
+    low: 30
+    high: 100
+    step: 10
