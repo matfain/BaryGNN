@@ -152,7 +152,10 @@ def run_training(config: Config) -> None:
         config.data.name, 
         batch_size=config.data.batch_size,
         num_workers=config.data.num_workers,
-        split_seed=config.data.split_seed
+        split_seed=config.data.split_seed,
+        custom_train_indices=config.data.custom_train_indices,
+        custom_test_indices=config.data.custom_test_indices,
+        cross_val_mode=config.data.cross_val_mode
     )
     
     # Update config with dataset info

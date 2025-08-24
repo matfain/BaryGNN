@@ -131,11 +131,16 @@ def load_dataset(
             # Use custom indices for cross-validation
             logger.info(f"Using custom indices for cross-validation: {len(custom_train_indices)} train, {len(custom_test_indices)} test")
             
-            # Convert to NumPy arrays if they're lists
+            # Convert to NumPy arrays if they're lists and ensure correct dtype
             if isinstance(custom_train_indices, list):
-                custom_train_indices = np.array(custom_train_indices)
+                custom_train_indices = np.array(custom_train_indices, dtype=np.int64)
+            elif isinstance(custom_train_indices, np.ndarray):
+                custom_train_indices = custom_train_indices.astype(np.int64)
+                
             if isinstance(custom_test_indices, list):
-                custom_test_indices = np.array(custom_test_indices)
+                custom_test_indices = np.array(custom_test_indices, dtype=np.int64)
+            elif isinstance(custom_test_indices, np.ndarray):
+                custom_test_indices = custom_test_indices.astype(np.int64)
             
             # Split train into train and validation
             np.random.shuffle(custom_train_indices)
@@ -149,7 +154,7 @@ def load_dataset(
         else:
             # Use default split
             num_samples = len(dataset)
-            indices = np.random.permutation(num_samples)
+            indices = np.random.permutation(num_samples).astype(np.int64)
             
             test_size = int(num_samples * test_ratio)
             val_size = int(num_samples * val_ratio)
