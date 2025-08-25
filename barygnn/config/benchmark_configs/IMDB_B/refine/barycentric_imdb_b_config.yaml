@@ -1,4 +1,4 @@
-experiment_type: &type ENZYMES_Opt_Real_Refined_2
+experiment_type: &experiment_name "IMDB_B_Opt_Refine"
 seed: 421
 
 model:
@@ -41,7 +41,7 @@ model:
     lambda_reg: 0.01
 
 data:
-  name: "ENZYMES"
+  name: "IMDB-BINARY"
   batch_size: 32
   num_workers: 4
   val_ratio: 0.1
@@ -68,7 +68,7 @@ training:
 wandb:
   enabled: true
   api_key: 1cf1eb10b27e2214f8d38aa573fdacb7af0ed6c2
-  project: *type
+  project: *experiment_name
   entity: null
   tags: []
   notes: null

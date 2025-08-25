@@ -1,6 +1,6 @@
 # Example Optuna study configuration for BaryGNN
 study:
-  name: &study_name ENZYMES_Opt_Real_Refined_1
+  name: &study_name ENZYMES_Opt_Real_Refined_2
   direction: maximize
   storage: sqlite:///optuna_studies
   n_trials: 60

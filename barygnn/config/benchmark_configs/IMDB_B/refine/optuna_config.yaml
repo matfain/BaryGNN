@@ -1,13 +1,15 @@
 # Example Optuna study configuration for BaryGNN
 study:
-  name: &study_name MUTAG_Opt_Refine_3
+  name: &study_name IMDB_B_Opt_Refine
   direction: maximize
   storage: sqlite:///optuna_studies
   n_trials: 60
   timeout: null
   n_workers: 1  # Number of parallel Optuna workers
 
-base_config: barygnn/config/benchmark_configs/MUTAG/refined/barycentric_mutag_config.yaml
+base_config: barygnn/config/benchmark_configs/IMDB_B/refine/barycentric_imdb_b_config.yaml
+
+
 
 metric:
   name: accuracy
@@ -30,14 +32,14 @@ search_space:
     choices: ["GIN", "GraphSAGE"]
   model.hidden_dim:
     type: categorical
-    choices: [32, 64, 128]
+    choices: [50, 64, 80]
   model.encoder.num_layers:
     type: categorical
-    choices: [3, 5, 8]
+    choices: [8,]
   model.encoder.dropout:
     type: float
-    low: 0.1
-    high: 0.5
+    low: 0.01
+    high: 0.1
     log: true
   model.encoder.shared_layers:
     type: categorical
@@ -47,12 +49,12 @@ search_space:
     choices: [16, 32, 64]
   model.encoder.projection_depth:
     type: categorical
-    choices: [3, 3]
+    choices: [2,]
   model.encoder.projection_width_factor:
     type: float
     low: 1.0
-    high: 2.0
-    log: true
+    high: 1.5
+    log: false
 
   model.pooling.standard_pooling_method:
     type: categorical
@@ -61,24 +63,26 @@ search_space:
     type: categorical
     choices: ["weighted_mean", "concat"]
   model.pooling.codebook_size:
-    type: categorical
-    choices: [8, 16, 32]
+    type: int
+    low: 56
+    high: 128
+    step: 8
   model.pooling.epsilon:
     type: float
-    low: 0.05
+    low: 0.1
     high: 0.2
-    log: true
+    log: false
 
   model.regularization.enabled:
     type: categorical
-    choices: [true, false]
+    choices: [true,]
   model.regularization.type:
     type: categorical
     choices: ["variance", "centroid", "coherence"]
   model.regularization.lambda_reg:
     type: float
     low: 0.001
-    high: 0.2
+    high: 0.06
     log: true
 
 

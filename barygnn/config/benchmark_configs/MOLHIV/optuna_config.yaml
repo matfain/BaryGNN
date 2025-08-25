@@ -1,6 +1,6 @@
 # Example Optuna study configuration for BaryGNN
 study:
-  name: MOLHIV_Opt_Real_1
+  name: MOLHIV_Opt_Real_2
   direction: maximize
   storage: sqlite:///optuna_studies
   n_trials: 10
@@ -15,7 +15,7 @@ metric:
 
 wandb:
   enabled: true
-  project: MOLHIV_Opt_Real_1
+  project: MOLHIV_Opt_Real_2
   project_suffix: optuna
   extra_tags: [optuna]
 
