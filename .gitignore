@@ -33,3 +33,4 @@ sandbox/
 barygnn/config/grid_search_configs/
 barygnn/optuna_outputs/
 barygnn/k_fold_outputs/
+/.idea/
