@@ -1,0 +1,88 @@
+data:
+  add_self_loops: true
+  batch_size: 32
+  cross_val_mode: false
+  custom_test_indices: null
+  custom_train_indices: null
+  name: ENZYMES
+  normalize_features: true
+  num_workers: 4
+  split_seed: 42
+  test_ratio: 0.1
+  val_ratio: 0.1
+experiment_type: ENZYMES_KFold
+model:
+  classification:
+    activation: relu
+    depth_factor: 1.0
+    dropout: 0.2
+    final_dropout: 0.5
+    hidden_dim: 256
+    hidden_dims:
+    - 256
+    - 128
+    - 64
+    norm_type: batch
+    num_blocks: 3
+    num_layers: 2
+    residual_type: add
+    type: enhanced
+    use_residual: true
+    width_factor: 1.0
+  debug_mode: false
+  encoder:
+    aggr: mean
+    distribution_size: 64
+    dropout: 0.03487362677777602
+    in_dim: 0
+    multi_head_type: efficient
+    num_layers: 4
+    projection_depth: 3
+    projection_width_factor: 0.8122542578065383
+    shared_layers: 2
+    type: GraphSAGE
+    use_categorical_encoding: false
+  hidden_dim: 32
+  pooling:
+    backend: barycenter
+    codebook_size: 64
+    epsilon: 0.25982365502787524
+    p: 2
+    readout_type: concat
+    scaling: 0.9
+    standard_pooling_method: global_mean_pool
+  regularization:
+    enabled: true
+    lambda_reg: 0.02143225144975234
+    type: variance
+  version: v2
+seed: 421
+training:
+  class_weights: null
+  device: cuda
+  focal_alpha: 1.0
+  focal_gamma: 2.0
+  focal_loss: false
+  gradient_clip: 1.0
+  lr: 0.004722763491586026
+  metric: accuracy
+  num_epochs: 300
+  patience: 35
+  scheduler: plateau
+  scheduler_params:
+    factor: 0.5
+    min_lr: 1.0e-05
+    mode: max
+    patience: 10
+  warmup_epochs: 0
+  weight_decay: 0.008371461724438124
+wandb:
+  api_key: 1cf1eb10b27e2214f8d38aa573fdacb7af0ed6c2
+  enabled: true
+  entity: null
+  log_gradients: false
+  log_parameters: true
+  notes: null
+  project: ENZYMES_KFold
+  save_code: true
+  watch_model: true
