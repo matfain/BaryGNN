@@ -1,0 +1,103 @@
+# Example Optuna study configuration for BaryGNN
+study:
+  name: &study_name IMDB_B_Opt_Refine
+  direction: maximize
+  storage: sqlite:///optuna_studies
+  n_trials: 60
+  timeout: null
+  n_workers: 1  # Number of parallel Optuna workers
+
+base_config: barygnn/config/benchmark_configs/IMDB_B/refine/barycentric_imdb_b_config.yaml
+
+
+
+metric:
+  name: accuracy
+  mode: max
+
+wandb:
+  enabled: true
+  project: *study_name
+  project_suffix: optuna
+  extra_tags: [optuna]
+
+pruning:
+  enabled: false
+  pruner: median
+  warmup_steps: 5
+
+search_space:
+  model.encoder.type:
+    type: categorical
+    choices: ["GIN", "GraphSAGE"]
+  model.hidden_dim:
+    type: categorical
+    choices: [50, 64, 80]
+  model.encoder.num_layers:
+    type: categorical
+    choices: [8,]
+  model.encoder.dropout:
+    type: float
+    low: 0.01
+    high: 0.1
+    log: true
+  model.encoder.shared_layers:
+    type: categorical
+    choices: [1, 2]
+  model.encoder.distribution_size:
+    type: categorical
+    choices: [16, 32, 64]
+  model.encoder.projection_depth:
+    type: categorical
+    choices: [2,]
+  model.encoder.projection_width_factor:
+    type: float
+    low: 1.0
+    high: 1.5
+    log: false
+
+  model.pooling.standard_pooling_method:
+    type: categorical
+    choices: ["global_mean_pool", "global_add_pool", "global_max_pool"]
+  model.pooling.readout_type:
+    type: categorical
+    choices: ["weighted_mean", "concat"]
+  model.pooling.codebook_size:
+    type: int
+    low: 56
+    high: 128
+    step: 8
+  model.pooling.epsilon:
+    type: float
+    low: 0.1
+    high: 0.2
+    log: false
+
+  model.regularization.enabled:
+    type: categorical
+    choices: [true,]
+  model.regularization.type:
+    type: categorical
+    choices: ["variance", "centroid", "coherence"]
+  model.regularization.lambda_reg:
+    type: float
+    low: 0.001
+    high: 0.06
+    log: true
+
+
+  training.lr:
+    type: float
+    low: 0.0001
+    high: 0.01
+    log: true
+  training.weight_decay:
+    type: float
+    low: 0.001
+    high: 0.01
+    log: true
+  training.patience:
+    type: int
+    low: 30
+    high: 100
+    step: 10
