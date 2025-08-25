@@ -1,4 +1,4 @@
-experiment_type: "MOLHIV_Opt_Real_1"
+experiment_type: "MOLHIV_Opt_Real_2"
 seed: 42
 
 model:
@@ -69,7 +69,7 @@ training:
 wandb:
   enabled: true
   api_key: 1cf1eb10b27e2214f8d38aa573fdacb7af0ed6c2
-  project: "MOLHIV_Opt_Real_1"
+  project: "MOLHIV_Opt_Real_2"
   entity: null
   tags: []
   notes: null

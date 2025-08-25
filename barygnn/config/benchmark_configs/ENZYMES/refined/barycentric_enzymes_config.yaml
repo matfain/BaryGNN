@@ -1,4 +1,4 @@
-experiment_type: &type ENZYMES_Opt_Real_Refined_1
+experiment_type: &type ENZYMES_Opt_Real_Refined_2
 seed: 421
 
 model:
