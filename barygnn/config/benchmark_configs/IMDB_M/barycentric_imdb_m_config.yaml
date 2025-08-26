@@ -1,4 +1,4 @@
-experiment_type: &study_name IMDB_M_Opt_Real_1_tryout3
+experiment_type: &study_name IMDB_M_Opt_Real_1_tryout5
 seed: 42
 
 model:

@@ -1,6 +1,6 @@
 # Example Optuna study configuration for BaryGNN
 study:
-  name: &study_name IMDB_M_Opt_Real_1_tryout3
+  name: &study_name IMDB_M_Opt_Real_1_tryout5
   direction: maximize
   storage: sqlite:///optuna_studies
   n_trials: 60
