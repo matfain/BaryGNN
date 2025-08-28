@@ -10,7 +10,7 @@ data:
   split_seed: 42
   test_ratio: 0.1
   val_ratio: 0.1
-experiment_type: MOLHIV_Opt_Real_fresh_trial5
+experiment_type: MOLHIV_Kfold
 model:
   classification:
     activation: relu
@@ -83,7 +83,7 @@ wandb:
   log_gradients: false
   log_parameters: true
   notes: null
-  project: MOLHIV_Opt_Real_fresh
+  project: MOLHIV_Kfold
   save_code: true
   tags:
   - optuna

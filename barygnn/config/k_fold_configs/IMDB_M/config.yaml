@@ -10,7 +10,7 @@ data:
   split_seed: 42
   test_ratio: 0.1
   val_ratio: 0.1
-experiment_type: IMDB_M_Opt_Real_1_tryout5_trial10
+experiment_type: IMDB_M_Kfold
 model:
   classification:
     activation: relu
@@ -83,7 +83,7 @@ wandb:
   log_gradients: false
   log_parameters: true
   notes: null
-  project: IMDB_M_Opt_Real_1_tryout5
+  project: IMDB_M_Kfold
   save_code: true
   tags:
   - optuna
