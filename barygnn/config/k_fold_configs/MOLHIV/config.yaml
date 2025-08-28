@@ -1,0 +1,91 @@
+data:
+  add_self_loops: true
+  batch_size: 64
+  cross_val_mode: false
+  custom_test_indices: null
+  custom_train_indices: null
+  name: ogbg-molhiv
+  normalize_features: true
+  num_workers: 8
+  split_seed: 42
+  test_ratio: 0.1
+  val_ratio: 0.1
+experiment_type: MOLHIV_Opt_Real_fresh_trial5
+model:
+  classification:
+    activation: relu
+    depth_factor: 1.0
+    dropout: 0.2
+    final_dropout: 0.5
+    hidden_dim: 256
+    hidden_dims:
+    - 256
+    - 128
+    - 64
+    norm_type: batch
+    num_blocks: 3
+    num_layers: 2
+    residual_type: add
+    type: enhanced
+    use_residual: true
+    width_factor: 1.0
+  debug_mode: false
+  encoder:
+    aggr: mean
+    distribution_size: 16
+    dropout: 0.16964157889753778
+    in_dim: 0
+    multi_head_type: efficient
+    num_layers: 3
+    projection_depth: 3
+    projection_width_factor: 1.256776550957111
+    shared_layers: 1
+    type: GIN
+    use_categorical_encoding: true
+  hidden_dim: 64
+  pooling:
+    backend: barycenter
+    codebook_size: 16
+    epsilon: 0.16102654356565696
+    p: 2
+    readout_type: weighted_mean
+    scaling: 0.9
+    standard_pooling_method: global_add_pool
+  regularization:
+    enabled: true
+    lambda_reg: 0.0015257511289071845
+    type: centroid
+  version: v2
+seed: 42
+training:
+  class_weights: null
+  device: cuda
+  focal_alpha: 1.0
+  focal_gamma: 2.0
+  focal_loss: false
+  gradient_clip: 1.0
+  lr: 0.0006092908298270958
+  metric: accuracy
+  num_epochs: 300
+  patience: 30
+  scheduler: plateau
+  scheduler_params:
+    factor: 0.5
+    min_lr: 1.0e-05
+    mode: max
+    patience: 10
+  warmup_epochs: 0
+  weight_decay: 0.001968772921743147
+wandb:
+  api_key: 1cf1eb10b27e2214f8d38aa573fdacb7af0ed6c2
+  enabled: true
+  entity: null
+  log_gradients: false
+  log_parameters: true
+  notes: null
+  project: MOLHIV_Opt_Real_fresh
+  save_code: true
+  tags:
+  - optuna
+  - trial_5
+  watch_model: true
