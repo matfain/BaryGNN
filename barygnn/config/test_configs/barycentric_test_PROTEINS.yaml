@@ -74,7 +74,7 @@ wandb:
   enabled: true
   project: "BaryGNN_Test"
   entity: null
-  api_key: 1cf1eb10b27e2214f8d38aa573fdacb7af0ed6c2
+  api_key: <INSERT_API_KEY>
   tags: ["barycentric", "PROTEINS", "test"]
   notes: "Testing barycentric pooling on PROTEINS dataset"
   save_code: true

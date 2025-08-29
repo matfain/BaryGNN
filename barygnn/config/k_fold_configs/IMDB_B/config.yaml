@@ -77,7 +77,7 @@ training:
   warmup_epochs: 0
   weight_decay: 0.005448812106180202
 wandb:
-  api_key: 1cf1eb10b27e2214f8d38aa573fdacb7af0ed6c2
+  api_key: <INSERT_API_KEY>
   enabled: true
   entity: null
   log_gradients: false

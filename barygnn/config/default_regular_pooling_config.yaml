@@ -62,7 +62,7 @@ training:
 
 wandb:
   enabled: true
-  api_key: 1cf1eb10b27e2214f8d38aa573fdacb7af0ed6c2
+  api_key: <INSERT_API_KEY>
   project: "barygnn"
   entity: null
   tags: []
