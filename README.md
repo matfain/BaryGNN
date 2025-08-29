@@ -1,297 +1,207 @@
-# BaryGNN
+# BaryGNN: Barycentric Pooling for Graph Neural Networks
 
-BaryGNN is a novel Graph Neural Network (GNN) pooling method that represents each node as an empirical distribution and computes graph-level embeddings using 2-Wasserstein barycenters with a learnable codebook. This approach preserves uncertainty, captures multi-modal structure, and respects the non-Euclidean geometry of latent spaces.  
+BaryGNN introduces a principled, distribution-aware approach to graph-level representation learning. Each node is encoded as a set of vectors using a multi-head GNN, forming an empirical distribution in the embedding space. We then compute a Wasserstein barycenter over a learnable codebook via optimal transport (Sinkhorn through GeomLoss) and combine this barycentric summary with a traditional global pooling signal to obtain a robust graph embedding for classification. This design improves expressiveness, stability, and interpretability while remaining modular and easy to extend.
+
 <p align="center">
-  <img src="BaryCenter_Pooling_Visualization.jpg" alt="BaryGNN pooling visualization" width="80%"/>
+  <img src="BaryCenter_Pooling_Visualization.jpg" alt="Barycentric Pooling Visualization" width="70%"/>
 </p>
 
-## Key Features
+## Setting Up the Project
 
-### 🚀 **BaryGNN Key Features**
-- **Multi-Head Node Encoders**: True node distribution representation using multiple GNN heads instead of naive linear projection
-- **GeomLoss Integration**: Robust optimal transport algorithms using the GeomLoss library
-- **Enhanced Classifiers**: Advanced MLP architectures with residual connections, multiple activation functions, and adaptive sizing
-- **Distribution Regularization**: Learnable regularization to ensure meaningful node distributions
-- **Comprehensive Configuration**: Flexible configuration system supporting all new features
+We recommend using the `pyproject.toml` as the single source of truth for dependencies and managing the environment with Conda + uv.
 
-### 🧠 **Core Architecture**
-- **Node Distributions**: Each node is represented as 32 learnable vectors forming an empirical distribution
-- **Barycentric Pooling**: Graph-level embeddings computed as 2-Wasserstein barycenters using optimal transport
-- **Learnable Codebook**: Shared codebook atoms across all graphs for consistent representations
-- **End-to-End Training**: Fully differentiable pipeline from node features to graph classification
+- Using Conda + uv (recommended):
 
-## Environment Setup (conda + uv)
+```bash
+# Create and activate a conda environment with Python 3.11+
+conda create -n barygnn python=3.11 -y
+conda activate barygnn
 
-To set up the development environment on a new machine:
+# Install uv into the conda environment
+pip install uv
 
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/matfain/BaryGNN.git
-   cd BaryGNN
-   ```
+# Install project dependencies directly from pyproject.toml (editable install)
+uv pip install -e .
 
-2. **Install [Anaconda](https://www.anaconda.com/products/distribution) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html)** if not already installed.
+# (Optional) Generate a requirements file from pyproject.toml if you need a lock snapshot
+uv pip compile pyproject.toml --output-file requirements.txt
+```
 
-3. **Create and activate the conda environment:**
-   ```bash
-   conda create -y -n barygnn python=3.11
-   conda activate barygnn
-   ```
+- Using Conda + pip (fallback):
 
-4. **Install [uv](https://astral.sh/docs/uv/):**
-   ```bash
-   pip install uv
-   ```
+```bash
+conda create -n barygnn python=3.11 -y
+conda activate barygnn
+pip install -e .
+```
 
-5. **Install all project dependencies:**
-   ```bash
-   uv pip install -r requirements.txt
-   ```
-   - If you want to regenerate the requirements file from the project definition:
-     ```bash
-     uv pip compile pyproject.toml --output-file requirements.txt
-     uv pip install -r requirements.txt
-     ```
-
-6. **You're ready to go!**
-
-**Dependencies include:**
-- PyTorch & PyTorch Geometric for GNN implementation
-- GeomLoss for optimal transport computations
-- Weights & Biases for experiment tracking
-- Standard scientific computing libraries (NumPy, SciPy, scikit-learn)
+Notes:
+- Python 3.11+ is required.
+- For GPU acceleration, ensure your CUDA toolkit/driver matches the pinned PyTorch version in `pyproject.toml`.
+- `geomloss`, `pykeops`, and `keopscore` are included via `pyproject.toml` and will be installed automatically.
 
 ## Project Structure
 
-```
+```text
 BaryGNN/
-├── README.md                 # Project overview, installation, usage
-├── pyproject.toml            # Project dependencies and metadata
-├── requirements.txt          # Pinned dependencies
-├── .gitignore                # Git ignore patterns
-│
-├── barygnn/                  # Main package directory
-│   ├── __init__.py           # Package initialization
-│   │
-│   ├── models/               # Neural network models
-│   │   ├── __init__.py
-│   │   ├── barygnn.py        # Enhanced BaryGNN model ⭐
-│   │   │
-│   │   ├── encoders/         # Graph node encoders
-│   │   │   ├── __init__.py
-│   │   │   ├── base.py       # Base encoder interface
-│   │   │   ├── gin.py        # GIN encoder implementation
-│   │   │   ├── sage.py       # GraphSAGE encoder implementation
-│   │   │   └── multi_head.py # Multi-head encoder architectures ⭐
-│   │   │
-│   │   ├── pooling/          # Pooling methods
-│   │   │   ├── __init__.py
-│   │   │   ├── geomloss_pooling.py    # GeomLoss-based pooling ⭐
-│   │   │   └── hier_sinkhorn.py       # Hierarchical pooling ⭐
-│   │   │
-│   │   ├── readout/          # Readout methods
-│   │   │   ├── __init__.py
-│   │   │   └── readout.py    # Readout implementation
-│   │   │
-│   │   └── classification/   # Classification heads
-│   │       ├── __init__.py
-│   │       ├── mlp.py        # Simple MLP classification head
-│   │       └── enhanced_mlp.py # Advanced MLP architectures ⭐
-│   │
-│   ├── losses/               # Regularization losses ⭐
-│   │   ├── __init__.py
-│   │   └── regularization.py # Distribution regularization losses
-│   │
-│   ├── config/               # Configuration management ⭐
-│   │   ├── __init__.py
-│   │   ├── config.py         # Enhanced configuration dataclasses
-│   │   └── default_config.yaml    # Default configuration
-│   │
-│   ├── data/                 # Data loading and preprocessing
-│   │   ├── __init__.py
-│   │   └── dataset.py        # Dataset utilities
-│   │
-│   ├── utils/                # Utility functions
-│   │   ├── __init__.py
-│   │   ├── metrics.py        # Evaluation metrics
-│   │   └── logger.py         # Logging utilities
-│   │
-│   └── scripts/              # Training and evaluation scripts
-│       ├── __init__.py
-│       ├── train.py          # Main training script
-│       └── evaluate.py       # Model evaluation script
-│
-└── examples/                 # Example usage scripts
-    ├── barygnn_config_training.py     # Configuration-based training ⭐
-    ├── barygnn_config.yaml            # Example configuration file ⭐
-    └── run_barygnn_config.sh          # SLURM batch script
+  barygnn/
+    config/
+      benchmark_configs/
+      k_fold_configs/
+      test_configs/
+      config.py                 # Dataclass-based configuration system
+    datasets/
+      dataset.py                # Dataset loading & transforms (TU + OGB)
+    losses/
+      regularization.py         # Distribution regularization losses
+    models/
+      barygnn.py                # Main BaryGNN model
+      encoders/                 # GIN / GraphSAGE + multi-head variants
+      pooling/                  # Barycentric (OT) & regular pooling backends
+      readout/                  # Combined readout of barycentric + traditional pooling
+      classification/           # Classifier heads: enhanced/adaptive/deep_residual/simple
+    scripts/
+      evaluate.py               # Evaluation helper used by train & runners
+    utils/
+      logger.py, metrics.py     # Logging & metrics utilities
+  data/                         # Dataset cache (auto-created)
+  pyproject.toml                # Project metadata and dependencies
+  train.py                      # Single-run training entry point
+  run_cross_validation.py       # K-fold CV driver (TU datasets)
+  run_optuna.py                 # Optuna study driver (hyperparameter search)
+  run_slurm.py / run_slurm_optuna.py (optional)
+  README_main.md (this file)
 ```
 
 ## Quick Start
 
-### Using the Configuration System (Recommended)
+Before you begin: complete the environment setup in "Setting Up the Project" (Conda + uv recommended).
 
-The easiest way to train BaryGNN is using the configuration system:
+Below is a complete example using our best-performing configuration: GIN encoder with the efficient multi-head variant (node distributions), barycentric pooling with weighted-mean readout, concatenated with a traditional global pooling embedding, and an enhanced MLP classifier.
 
-1. **Create or modify a configuration file** (see `examples/barygnn_config.yaml`):
+1) Choose a benchmark config (example: MUTAG). A typical YAML will contain at least these key fields:
 
 ```yaml
-experiment_type: "my_barygnn_experiment"
+# example: barygnn/config/benchmark_configs/MUTAG/barycentric_mutag_config.yaml
+experiment_type: BaryGNN_MUTAG
 seed: 42
 
 model:
-  version: "v2"
+  version: v2
   hidden_dim: 64
-  readout_type: "weighted_mean"
-  
+  debug_mode: false
   encoder:
-    type: "GIN"
-    multi_head_type: "efficient"    # "full" or "efficient"
-    distribution_size: 32           # Vectors per node
-    
+    type: GIN
+    num_layers: 3
+    dropout: 0.5
+    multi_head_type: efficient           # efficient multi-head encoder
+    shared_layers: 1
+    distribution_size: 32               # number of heads (samples per node)
   pooling:
-    codebook_size: 32              # Number of codebook atoms
-    epsilon: 0.2                   # Sinkhorn regularization
-    max_iter: 100                  # POT max iterations
-    tol: 1e-6                      # POT convergence tolerance
-    
+    backend: barycenter                 # OT-based barycentric pooling
+    readout_type: weighted_mean         # barycentric weighted mean of codebook
+    codebook_size: 16
+    epsilon: 0.2                        # Sinkhorn blur (ε)
+    p: 2
+    scaling: 0.9
   classification:
-    type: "enhanced"               # Advanced MLP
+    type: enhanced
     hidden_dims: [256, 128, 64]
-    
+    dropout: 0.2
+    activation: relu
+    final_dropout: 0.5
+  regularization:
+    enabled: true
+    type: variance
+    lambda_reg: 0.01
+
 data:
-  name: "MUTAG"
+  name: MUTAG
   batch_size: 32
-  
+  num_workers: 4
+  split_seed: 42
+  val_ratio: 0.1
+  test_ratio: 0.1
+
 training:
-  num_epochs: 200
+  num_epochs: 300
   lr: 0.001
-  
+  weight_decay: 0.0005
+  patience: 20
+  metric: accuracy                      # early stopping & scheduler metric
+  scheduler: plateau
+  scheduler_params:
+    factor: 0.5
+    patience: 10
+    threshold: 1e-4
+
 wandb:
-  enabled: true
-  project: "BaryGNN"
+  enabled: false
+  project: BaryGNN
 ```
 
-2. **Run training:**
+2) Train:
+
 ```bash
-python examples/barygnn_config_training.py --config examples/barygnn_config.yaml
+python train.py --config barygnn/config/benchmark_configs/MUTAG/barycentric_mutag_config.yaml --log_dir runs/mutag
 ```
 
-### Configuration Details
+- Device is auto-selected (CUDA if available).
+- Best checkpoint is saved to `checkpoints/<experiment>_best.pt`.
+- Final test metrics are logged after early stopping.
 
-**Multi-Head Encoders:**
-- `efficient`: Shared GNN backbone with projection heads (recommended)
-- `full`: Separate GNN for each head (more parameters)
+3) Evaluate or run cross-validation:
 
-**GeomLoss Pooling:**
-- `epsilon`: Regularization parameter for Sinkhorn algorithm
-- `max_iter`: Maximum iterations for convergence
-- `tol`: Convergence tolerance
-
-**Enhanced Classifiers:**
-- `simple`: Basic MLP
-- `enhanced`: MLP with residual connections and normalization
-- `adaptive`: Dynamically sized MLP
-- `deep_residual`: Deep residual MLP blocks
-
-**Readout Types:**
-- `weighted_mean`: Weighted mean of codebook atoms (recommended)
-- `concat`: Concatenates histogram weights with flattened codebook atoms
-- `combined`: Combines barycentric pooling with traditional graph pooling methods
-
-### Combined Readout
-
-The new `combined` readout type allows you to combine the power of barycentric pooling with traditional graph pooling methods:
-
-```yaml
-model:
-  readout_type: "combined"
-  combined_readout: "global_add_pool"  # Options: global_add_pool, global_mean_pool, global_max_pool
-  barycentric_readout: "weighted_mean"  # Options: weighted_mean, concat
+```bash
+# 10-fold stratified CV on a TU dataset (e.g., MUTAG)
+python run_cross_validation.py --config barygnn/config/k_fold_configs/MUTAG/config.yaml --n_folds 10 --stratified
 ```
 
-This creates graph embeddings by concatenating:
-1. **Barycentric embedding**: Computed using optimal transport
-2. **Traditional embedding**: Computed using standard graph pooling on the node distributions
+4) Hyperparameter optimization with Optuna:
 
-The resulting embedding has dimension `hidden_dim * 2` (barycentric + traditional).
-
-### Readout and Classification
-
-```python
-# Create final graph embedding
-if readout_type == "weighted_mean":
-    graph_embedding = torch.sum(barycenter_weights.unsqueeze(-1) * codebook, dim=1)
-elif readout_type == "concat":
-    # Concatenate histogram weights with flattened codebook atoms
-    flattened_codebook = codebook.flatten()
-    graph_embedding = torch.cat([barycenter_weights, flattened_codebook.expand(batch_size, -1)], dim=1)
-else:  # "combined"
-    # Combine barycentric and traditional pooling
-    graph_embedding = torch.cat([barycentric_emb, traditional_emb], dim=1)
-
-# Classification
-logits = classifier(graph_embedding)
+```bash
+python run_optuna.py --config barygnn/config/benchmark_configs/MUTAG/optuna_config.yaml
 ```
 
-## Weights & Biases Integration
+## Reproducing Reported Metrics
 
-BaryGNN includes comprehensive W&B logging:
+For each benchmarked dataset, our final, best-performing configurations are provided in:
 
-```yaml
-wandb:
-  enabled: true
-  project: "BaryGNN"
-  tags: ["multi-head", "geomloss", "enhanced"]
-  log_gradients: true
-  log_parameters: true
-  watch_model: true
+- `barygnn/config/k_fold_configs/<DATASET>/config.yaml`
+
+These files were derived from the best Optuna trials per dataset and are the exact configurations to use for reproducing the metrics reported in the article.
+
+Example (10-fold MUTAG):
+
+```bash
+python run_cross_validation.py --config barygnn/config/k_fold_configs/MUTAG/config.yaml --n_folds 10 --stratified
 ```
 
-## Performance Tips
+You can also run a single train/eval pass with the same configuration via:
 
-1. **Use GeomLoss**: More stable and robust than custom implementations
-2. **Start with "efficient" multi-head**: Better dimension consistency
-3. **Use enhanced classifiers**: Better performance with residual connections
-4. **Enable distribution regularization**: Helps learn meaningful distributions
-5. **Monitor W&B logs**: Track training progress and hyperparameter effects
-
-## Troubleshooting
-
-### Dimension Compatibility Issues
-
-When using BaryGNN, ensure dimension compatibility between components:
-
-- **Issue**: Dimension mismatches between encoder output and pooling layer.
-
-- **Solution**: Ensure `hidden_dim` is consistent throughout your configuration:
-
-```yaml
-# Recommended configuration
-model:
-  hidden_dim: 64  # This dimension must be consistent!
-  
-  encoder:
-    hidden_dim: 64  # Must match model.hidden_dim
-    multi_head_type: "efficient"  # Preferred for dimension consistency
+```bash
+python train.py --config barygnn/config/k_fold_configs/MUTAG/config.yaml --log_dir runs/mutag_kfold_cfg
 ```
 
-### GeomLoss Convergence Issues
-
-If you see warnings about convergence:
-- This is normal behavior when GeomLoss's Sinkhorn algorithm produces very small weights
-- The system automatically falls back to uniform weights
-- Consider adjusting `epsilon` (typically 0.1-0.5) or `max_iter` if issues persist
+Tips:
+- IMDB datasets are featureless; we automatically apply degree-based one-hot node features.
+- OGB datasets use their predefined splits; cross-validation is disabled for OGB.
+- For molecular datasets, set `model.encoder.use_categorical_encoding: true` to use OGB’s `AtomEncoder`.
+- Barycentric hyperparameters:
+  - `model.encoder.distribution_size`: number of encoder heads (samples) per node. Larger values yield richer per-node distributions but increase memory/compute. Typical: 16–64.
+  - `model.pooling.codebook_size`: number of atoms in the learnable codebook. Higher values allow finer barycentric representations but can overfit. Typical: 8–64.
+  - `model.pooling.epsilon` (Sinkhorn blur): entropic regularization controlling transport smoothness. Larger ε stabilizes and smooths histograms but blurs alignment; smaller ε sharpens but may be less stable. Typical: 0.05–0.5.
 
 ## Citation
 
 If you use BaryGNN in your research, please cite:
 
 ```bibtex
-@article{barygnn2024,
-  title={BaryGNN: Barycentric Pooling for Graph Neural Networks},
-  author={Your Name},
-  journal={arXiv preprint},
-  year={2024}
+@software{barygnn_2025,
+  title        = {BaryGNN: Barycentric Pooling for Graph Neural Networks},
+  author       = {Fainzilber, Matan and Rabinovich, Amit and Rosiner, Ido},
+  year         = {2025},
+  url          = {https://github.com/matfain/BaryGNN},
+  note         = {Version 0.1.0}
 }
-```
+``` 
