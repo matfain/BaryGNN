@@ -1,9 +1,9 @@
-# BaryGNN: Barycentric Pooling for Graph Neural Networks
+# BaryGNN: Barycentric Pooling for GNNs
 
 BaryGNN introduces a principled, distribution-aware approach to graph-level representation learning. Each node is encoded as a set of vectors using a multi-head GNN, forming an empirical distribution in the embedding space. We then compute a Wasserstein barycenter over a learnable codebook via optimal transport (Sinkhorn through GeomLoss) and combine this barycentric summary with a traditional global pooling signal to obtain a robust graph embedding for classification. This design improves expressiveness, stability, and interpretability while remaining modular and easy to extend.
 
 <p align="center">
-  <img src="BaryCenter_Pooling_Visualization.jpg" alt="Barycentric Pooling Visualization" width="70%"/>
+  <img src="BaryCenter_Pooling_Visualization.jpg" alt="Barycentric Pooling Visualization" width="85%"/>
 </p>
 
 ## Setting Up the Project
