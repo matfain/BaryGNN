@@ -1,7 +1,7 @@
 # BaryGNN
 
 BaryGNN is a novel Graph Neural Network (GNN) pooling method that represents each node as an empirical distribution and computes graph-level embeddings using 2-Wasserstein barycenters with a learnable codebook. This approach preserves uncertainty, captures multi-modal structure, and respects the non-Euclidean geometry of latent spaces.
-
+![](BaryCenter_Pooling_Visualization.jpg)
 ## Key Features
 
 ### 🚀 **BaryGNN Key Features**
