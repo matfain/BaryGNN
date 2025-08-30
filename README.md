@@ -6,6 +6,18 @@ BaryGNN introduces a principled, distribution-aware approach to graph-level repr
   <img src="BaryCenter_Pooling_Visualization.jpg" alt="Barycentric Pooling Visualization" width="85%"/>
 </p>
 
+## 📄 Preprint
+
+**BaryGNN: Barycentric Pooling for Graph Neural Networks**  
+[Fainzilber, Rabinovich, Rosiner (2025) - Preprint](https://drive.google.com/file/d/1vMnUZekgw33ItxAZfGcn1dggWy0ZpB2V/view)
+
+<p align="center">
+  <a href="https://drive.google.com/file/d/1vMnUZekgw33ItxAZfGcn1dggWy0ZpB2V/view">
+    <img src="https://img.shields.io/badge/Read%20the%20Preprint-PDF-blue" alt="Read the Preprint">
+  </a>
+</p>
+
+
 ## Setting Up the Project
 
 We recommend using the `pyproject.toml` as the single source of truth for dependencies and managing the environment with Conda + uv.
@@ -203,5 +215,13 @@ If you use BaryGNN in your research, please cite:
   year         = {2025},
   url          = {https://github.com/matfain/BaryGNN},
   note         = {Version 0.1.0}
+}
+
+@misc{barygnn_paper_2025,
+  title        = {BaryGNN: Barycentric Pooling for Graph Neural Networks},
+  author       = {Fainzilber, Matan and Rabinovich, Amit and Rosiner, Ido},
+  year         = {2025},
+  url          = {https://drive.google.com/file/d/1vMnUZekgw33ItxAZfGcn1dggWy0ZpB2V/view},
+  note         = {Preprint}
 }
 ``` 
