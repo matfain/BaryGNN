@@ -3,8 +3,8 @@ name = "barygnn"
 description = "BaryGNN: Barycenter pooling methods for Graph Neural Networks"
 version = "0.1.0"
 authors = [
-    { name = "Matan Fainzilber", email = "matan.fainzilber@mail.tau.ac.il" },
-    { name = "Amit Rabinovich", email = "amit.rabinovich@mail.tau.ac.il" },
+    { name = "Matan Fainzilber", email = "fainzilber@mail.tau.ac.il" },
+    { name = "Amit Rabinovich", email = "amitr5@mail.tau.ac.il" },
     { name = "Ido Rosiner", email = "ido.rosiner@mail.tau.ac.il" }
 ]
 requires-python = ">=3.11"
